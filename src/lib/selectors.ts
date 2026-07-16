@@ -5,9 +5,11 @@ import {
   weekEndISO,
   weekStartISO,
 } from "./dates";
+import { isFullCredit } from "./practiceLevels";
 import type {
   AppData,
   CheckIn,
+  CheckInStatus,
   Dream,
   Milestone,
   PointA,
@@ -19,6 +21,7 @@ export type WeekDayBar = {
   date: string;
   shortLabel: string;
   done: number;
+  partial: number;
   skipped: number;
 };
 
@@ -27,6 +30,8 @@ export type WeekReviewStats = {
   weekEnd: string;
   label: string;
   doneCheckIns: number;
+  partialCheckIns: number;
+  strongCheckIns: number;
   skippedCheckIns: number;
   daysWithDone: number;
   dayBars: WeekDayBar[];
@@ -34,7 +39,7 @@ export type WeekReviewStats = {
   weeklyPractices: Array<{
     id: string;
     title: string;
-    status: "done" | "skipped" | "open";
+    status: CheckInStatus | "open";
   }>;
   milestonesDoneInWeek: number;
 };
@@ -189,7 +194,8 @@ export function getWeekReviewStats(
     dayBars.push({
       date,
       shortLabel: d.toLocaleDateString("ru-RU", { weekday: "short" }),
-      done: dayIns.filter((c) => c.status === "done").length,
+      done: dayIns.filter((c) => isFullCredit(c.status)).length,
+      partial: dayIns.filter((c) => c.status === "partial").length,
       skipped: dayIns.filter((c) => c.status === "skipped").length,
     });
   }
@@ -203,12 +209,7 @@ export function getWeekReviewStats(
           return {
             id: p.id,
             title: p.title,
-            status:
-              checkIn?.status === "done"
-                ? ("done" as const)
-                : checkIn?.status === "skipped"
-                  ? ("skipped" as const)
-                  : ("open" as const),
+            status: checkIn?.status ?? ("open" as const),
           };
         })
     : [];
@@ -222,16 +223,24 @@ export function getWeekReviewStats(
   }).length;
 
   const doneCheckIns = weekCheckIns.filter((c) => c.status === "done").length;
+  const strongCheckIns = weekCheckIns.filter(
+    (c) => c.status === "strong",
+  ).length;
+  const partialCheckIns = weekCheckIns.filter(
+    (c) => c.status === "partial",
+  ).length;
   const skippedCheckIns = weekCheckIns.filter(
     (c) => c.status === "skipped",
   ).length;
-  const maxDayDone = Math.max(1, ...dayBars.map((d) => d.done));
+  const maxDayDone = Math.max(1, ...dayBars.map((d) => d.done + d.partial));
 
   return {
     weekStart,
     weekEnd,
     label: formatWeekLabel(weekStart),
     doneCheckIns,
+    partialCheckIns,
+    strongCheckIns,
     skippedCheckIns,
     daysWithDone: dayBars.filter((d) => d.done > 0).length,
     dayBars,

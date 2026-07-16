@@ -3,7 +3,8 @@ export type StageStatus = "planned" | "active" | "completed";
 export type MilestoneStatus = "open" | "done";
 export type PracticeStatus = "active" | "paused" | "retired";
 export type PracticeFrequency = "daily" | "weekly";
-export type CheckInStatus = "done" | "skipped";
+/** Effort level for a practice period — not just binary done/skip. */
+export type CheckInStatus = "skipped" | "partial" | "done" | "strong";
 export type GrowthSourceType =
   | "book"
   | "course"
@@ -91,6 +92,8 @@ export type PracticeTimerSession = {
   accumulatedMs: number;
   /** ISO timestamp while running; null when paused. */
   runningSince: string | null;
+  /** Day ISO or week-start ISO this session belongs to. */
+  periodKey?: string;
 };
 
 export type GrowthSource = {

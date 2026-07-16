@@ -1,4 +1,5 @@
 import { todayISO, toISODate } from "./dates";
+import { isFullCredit } from "./practiceLevels";
 import {
   getActiveStage,
   getFocusDream,
@@ -56,7 +57,9 @@ function characterTitle(level: number, floor: number): string {
 
 function computeStreak(data: AppData): number {
   const doneDates = new Set(
-    data.checkIns.filter((c) => c.status === "done").map((c) => c.date),
+    data.checkIns
+      .filter((c) => isFullCredit(c.status))
+      .map((c) => c.date),
   );
   if (doneDates.size === 0) return 0;
 
@@ -83,7 +86,7 @@ export function getCharacterProgress(data: AppData): CharacterProgress | null {
   const stageIds = new Set(stages.map((s) => s.id));
 
   const checkInsDone = data.checkIns.filter(
-    (c) => c.status === "done" && c.practiceId,
+    (c) => c.practiceId && isFullCredit(c.status),
   ).length;
   const milestonesDone = data.milestones.filter(
     (m) => m.status === "done" && stageIds.has(m.stageId),

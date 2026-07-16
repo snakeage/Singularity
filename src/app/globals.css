@@ -12,6 +12,10 @@
   --accent: #0d6e66;
   --accent-ink: #f2fffc;
   --metal: #b87333;
+  /* Effort: warm = shortfall; cool scale = closed → over (GitHub-style intensity) */
+  --level-partial: #e59a12;
+  --level-done: var(--accent);
+  --level-strong: #0e2426;
   --wash: rgba(13, 110, 102, 0.14);
   --wash-2: rgba(184, 115, 51, 0.1);
   --background: var(--bg);
@@ -70,6 +74,63 @@ body {
   border-top: 1px solid var(--line);
   border-right: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
+}
+
+.practice-card[data-level="partial"] {
+  border-left-color: var(--level-partial);
+}
+
+.practice-card[data-level="done"] {
+  border-left-color: var(--level-done);
+}
+
+.practice-card[data-level="strong"] {
+  border-left-color: var(--level-strong);
+}
+
+.practice-card[data-level="skipped"] {
+  border-left-color: var(--faint);
+}
+
+.practice-card[data-level="open"] {
+  border-left-color: var(--line);
+}
+
+/* Contribution-style cells (habit / GitHub heatmap pattern) */
+.history-cell {
+  display: block;
+  width: 1.15rem;
+  height: 1.15rem;
+  border-radius: 0.28rem;
+  background: color-mix(in srgb, var(--panel-2) 55%, white);
+  box-shadow: inset 0 0 0 1.5px var(--line);
+  transition: transform 120ms ease, box-shadow 120ms ease;
+}
+
+.history-cell[data-level="partial"] {
+  background: var(--level-partial);
+  box-shadow: none;
+}
+
+.history-cell[data-level="done"] {
+  background: var(--level-done);
+  box-shadow: none;
+}
+
+.history-cell[data-level="strong"] {
+  background: var(--level-strong);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+.history-cell[data-level="skipped"] {
+  background: var(--faint);
+  box-shadow: none;
+}
+
+.history-cell--sm {
+  width: 0.7rem;
+  height: 0.7rem;
+  border-radius: 0.2rem;
 }
 
 .floor-card {

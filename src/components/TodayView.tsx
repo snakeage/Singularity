@@ -4,6 +4,11 @@ import Link from "next/link";
 import { formatWeekLabel, weekStartISO } from "@/lib/dates";
 import { XP_HINTS } from "@/lib/gamification";
 import {
+  isFullCredit,
+  LEVEL_LABEL,
+  levelTone,
+} from "@/lib/practiceLevels";
+import {
   getActiveStage,
   getCheckInForPracticePeriod,
   getFocusDream,
@@ -13,6 +18,7 @@ import {
 import type { AppData, CheckIn, Practice } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
 import { PathMap } from "./PathMap";
+import { PracticeHistoryStrip } from "./PracticeHistoryStrip";
 import { PracticeTimer } from "./PracticeTimer";
 import { ProgressHud } from "./ProgressHud";
 import {
@@ -25,18 +31,30 @@ import {
   Section,
 } from "./ui";
 
-/** Open practices first; done sinks so remaining work stays visible. */
+/** Open first; partial next; skipped; full credit sinks. */
 function sortPracticesForToday(
   practices: Practice[],
   data: AppData,
 ): Practice[] {
   const rank = (p: Practice) => {
     const status = getCheckInForPracticePeriod(data, p)?.status;
-    if (status === "done") return 2;
-    if (status === "skipped") return 1;
-    return 0;
+    if (!status) return 0;
+    if (status === "partial") return 1;
+    if (status === "skipped") return 2;
+    if (status === "done") return 3;
+    return 4; // strong
   };
   return [...practices].sort((a, b) => rank(a) - rank(b));
+}
+
+function confirmClaimWithoutTimer(practice: Practice, claim: () => void) {
+  if (practice.minMinutes) {
+    const ok = window.confirm(
+      `У практики минимум ${practice.minMinutes} мин. Без таймера это будет «частично», не норма. Продолжить?`,
+    );
+    if (!ok) return;
+  }
+  claim();
 }
 
 function PracticeCard({
@@ -44,7 +62,7 @@ function PracticeCard({
   dreamTitle,
   stageTitle,
   checkIn,
-  onDone,
+  onClaimWithoutTimer,
   onSkip,
   onClear,
 }: {
@@ -52,17 +70,23 @@ function PracticeCard({
   dreamTitle: string;
   stageTitle: string;
   checkIn?: CheckIn;
-  onDone: () => void;
+  onClaimWithoutTimer: () => void;
   onSkip: () => void;
   onClear: () => void;
 }) {
   const isWeekly = practice.frequency === "weekly";
+  const level = checkIn?.status ?? "open";
 
   return (
-    <li className="practice-card rounded-md p-4">
+    <li className="practice-card rounded-md p-4" data-level={level}>
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge tone="metal">Практика</Badge>
         <Badge>{isWeekly ? "на неделю" : "на сегодня"}</Badge>
+        {checkIn ? (
+          <Badge tone={levelTone(checkIn.status)}>
+            {LEVEL_LABEL[checkIn.status]}
+          </Badge>
+        ) : null}
         <span className="text-xs text-[var(--faint)]">
           внутри этапа «{stageTitle}»
         </span>
@@ -79,7 +103,8 @@ function PracticeCard({
       ) : null}
       {practice.minMinutes ? (
         <p className="mt-1 text-xs text-[var(--muted)]">
-          Минимум по времени: {practice.minMinutes} мин
+          Минимум по времени: {practice.minMinutes} мин · сильно от{" "}
+          {Math.ceil(practice.minMinutes * 1.5)} мин
         </p>
       ) : null}
       {practice.whyForStage ? (
@@ -89,24 +114,37 @@ function PracticeCard({
       ) : null}
       {isWeekly ? (
         <p className="mt-2 text-xs text-[var(--faint)]">
-          Одна отметка на неделю ({formatWeekLabel(weekStartISO())}). Не нужно
-          отмечать каждый день.
+          Одна отметка на неделю ({formatWeekLabel(weekStartISO())}).
         </p>
       ) : null}
+
+      <PracticeHistoryStrip practice={practice} />
 
       {checkIn?.status !== "skipped" ? (
         <PracticeTimer practice={practice} checkIn={checkIn} />
       ) : null}
 
-      <div className="mt-3 flex flex-wrap gap-2">
-        {checkIn?.status === "done" ? (
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        {checkIn && isFullCredit(checkIn.status) ? (
           <>
             <Button type="button" variant="primary" disabled>
-              {isWeekly ? "Сделано на этой неделе ✓" : "Сделано ✓"}
+              {LEVEL_LABEL[checkIn.status]}
               {checkIn.minutesSpent != null
                 ? ` · ${checkIn.minutesSpent} мин`
                 : ""}{" "}
               · {XP_HINTS.checkIn}
+            </Button>
+            <Button type="button" variant="ghost" onClick={onClear}>
+              Отменить
+            </Button>
+          </>
+        ) : checkIn?.status === "partial" ? (
+          <>
+            <Button type="button" variant="primary" disabled>
+              Частично
+              {checkIn.minutesSpent != null
+                ? ` · ${checkIn.minutesSpent} мин`
+                : ""}
             </Button>
             <Button type="button" variant="ghost" onClick={onClear}>
               Отменить
@@ -117,8 +155,14 @@ function PracticeCard({
             <Button type="button" variant="primary" disabled>
               {isWeekly ? "Пропущено на этой неделе" : "Пропущено"}
             </Button>
-            <Button type="button" variant="ghost" onClick={onDone}>
-              Всё же сделано · {XP_HINTS.checkIn}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() =>
+                confirmClaimWithoutTimer(practice, onClaimWithoutTimer)
+              }
+            >
+              Всё же отметить
             </Button>
             <Button type="button" variant="ghost" onClick={onClear}>
               Отменить
@@ -126,12 +170,19 @@ function PracticeCard({
           </>
         ) : (
           <>
-            <Button type="button" variant="ghost" onClick={onDone}>
-              Сделано без таймера · {XP_HINTS.checkIn}
-            </Button>
             <Button type="button" variant="ghost" onClick={onSkip}>
               Пропуск
             </Button>
+            <button
+              type="button"
+              className="text-xs text-[var(--faint)] underline-offset-2 hover:text-[var(--muted)] hover:underline"
+              onClick={() =>
+                confirmClaimWithoutTimer(practice, onClaimWithoutTimer)
+              }
+            >
+              Без таймера
+              {practice.minMinutes ? " → частично" : ` · ${XP_HINTS.checkIn}`}
+            </button>
           </>
         )}
       </div>
@@ -143,6 +194,7 @@ export function TodayView() {
   const {
     ready,
     data,
+    claimPracticeWithoutTimer,
     setPracticePeriodCheckIn,
     clearPracticePeriodCheckIn,
   } = useApp();
@@ -207,12 +259,11 @@ export function TodayView() {
       <ProgressHud />
       <PathMap compact />
 
-      <Hint title="Три уровня — не путай">
+      <Hint title="Честная шкала">
         <p>
-          <strong>Этап</strong> — большая ступень к мечте.{" "}
-          <strong>Практика</strong> — действие внутри этапа (каждый день или раз
-          в неделю). <strong>Рубеж</strong> — доказательство, что этап можно
-          закрывать.
+          <strong>Частично</strong> — были минуты, но меньше плана.{" "}
+          <strong>Норма</strong> — план закрыт. <strong>Сильно</strong> — от
+          1.5× минимума. XP только за норму и сильно.
         </p>
       </Hint>
 
@@ -231,8 +282,8 @@ export function TodayView() {
           <div className="space-y-3">
             <Hint title="С чего начать">
               <p>
-                На экране <strong>Этап</strong> добавь практики: ежедневные и
-                при необходимости еженедельные.
+                На экране <strong>Этап</strong> добавь практики и минимум минут —
+                дальше таймер на Сегодня.
               </p>
             </Hint>
             <Link href="/stage">
@@ -244,7 +295,7 @@ export function TodayView() {
         <>
           <Section
             title="На сегодня"
-            hint={`Ежедневные практики этапа «${stage.title}». Отметка даёт ${XP_HINTS.checkIn}.`}
+            hint={`Ежедневные практики этапа «${stage.title}». Норма/сильно даёт ${XP_HINTS.checkIn}.`}
           >
             {daily.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">
@@ -259,11 +310,10 @@ export function TodayView() {
                     dreamTitle={dream.title}
                     stageTitle={stage.title}
                     checkIn={getCheckInForPracticePeriod(data, practice)}
-                    onDone={() =>
-                      setPracticePeriodCheckIn(
+                    onClaimWithoutTimer={() =>
+                      claimPracticeWithoutTimer(
                         practice.id,
                         practice.frequency,
-                        "done",
                       )
                     }
                     onSkip={() =>
@@ -298,11 +348,10 @@ export function TodayView() {
                     dreamTitle={dream.title}
                     stageTitle={stage.title}
                     checkIn={getCheckInForPracticePeriod(data, practice)}
-                    onDone={() =>
-                      setPracticePeriodCheckIn(
+                    onClaimWithoutTimer={() =>
+                      claimPracticeWithoutTimer(
                         practice.id,
                         practice.frequency,
-                        "done",
                       )
                     }
                     onSkip={() =>

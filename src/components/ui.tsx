@@ -133,14 +133,20 @@ export function Badge({
   tone = "muted",
 }: {
   children: ReactNode;
-  tone?: "muted" | "accent" | "metal";
+  tone?: "muted" | "accent" | "metal" | "partial" | "strong" | "skip";
 }) {
   const styles =
     tone === "accent"
       ? "bg-[var(--wash)] text-[var(--accent)] ring-1 ring-[var(--accent)]/30"
       : tone === "metal"
         ? "bg-[var(--metal)]/15 text-[var(--metal)] ring-1 ring-[var(--metal)]/35"
-        : "bg-[var(--panel-2)]/70 text-[var(--muted)]";
+        : tone === "partial"
+          ? "bg-[var(--level-partial)]/18 text-[#9a5b05] ring-1 ring-[var(--level-partial)]/40"
+          : tone === "strong"
+            ? "bg-[var(--level-strong)]/90 text-[var(--accent-ink)] ring-1 ring-[var(--level-strong)]"
+            : tone === "skip"
+              ? "bg-[var(--panel-2)]/70 text-[var(--faint)]"
+              : "bg-[var(--panel-2)]/70 text-[var(--muted)]";
   return (
     <span
       className={`inline-flex items-center rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${styles}`}

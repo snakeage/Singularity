@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 import { OnboardingHost } from "./Onboarding";
 import { ProgressHud } from "./ProgressHud";
 import { ReminderHost } from "./ReminderHost";
+import { TimerSettleHost } from "./TimerSettleHost";
+import { ToastHost } from "./ToastHost";
 
 const nav = [
   { href: "/", label: "Сегодня" },
@@ -68,6 +70,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       </main>
       <OnboardingHost />
       <ReminderHost />
+      <TimerSettleHost />
+      <ToastHost />
     </div>
   );
 }

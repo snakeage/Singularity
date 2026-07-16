@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { weekStartISO } from "@/lib/dates";
 import { XP_HINTS } from "@/lib/gamification";
+import { LEVEL_LABEL, levelTone } from "@/lib/practiceLevels";
 import { getFocusDream, getWeekReviewStats } from "@/lib/selectors";
 import { useApp } from "@/store/AppProvider";
 import {
@@ -100,51 +101,66 @@ export function ReviewView() {
           title="Картина недели"
           hint="Живые цифры по текущей неделе — до и после сохранения обзора."
         >
-          <div className="grid gap-3 sm:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
-              label="Сделано"
+              label="Норма"
               value={String(stats.doneCheckIns)}
-              hint="отметок практик"
+              hint="план закрыт"
+            />
+            <StatCard
+              label="Сильно"
+              value={String(stats.strongCheckIns)}
+              hint="овер плана"
+            />
+            <StatCard
+              label="Частично"
+              value={String(stats.partialCheckIns)}
+              hint="движение без нормы"
             />
             <StatCard
               label="Пропуски"
               value={String(stats.skippedCheckIns)}
-              hint="осознанных пропусков"
-            />
-            <StatCard
-              label="Рубежи"
-              value={String(stats.milestonesDoneInWeek)}
-              hint="закрыто за неделю"
+              hint="осознанно мимо"
             />
           </div>
 
           <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-4">
             <div className="mb-2 flex items-end justify-between gap-2">
               <p className="text-sm font-medium text-[var(--ink)]">
-                Дни с хотя бы одной сделанной практикой
+                Дни с нормой или сильно
               </p>
               <span className="text-xs text-[var(--muted)]">
-                {stats.daysWithDone}/7
+                {stats.daysWithDone}/7 · рубежи {stats.milestonesDoneInWeek}
               </span>
             </div>
             <ProgressBar ratio={dailyCoverage} />
             <div className="mt-4 flex h-28 items-end gap-1.5 sm:gap-2">
               {stats.dayBars.map((day) => {
+                const total = day.done + day.partial;
                 const height =
-                  day.done === 0
+                  total === 0
                     ? 8
-                    : Math.max(16, Math.round((day.done / stats.maxDayDone) * 100));
+                    : Math.max(
+                        16,
+                        Math.round((total / stats.maxDayDone) * 100),
+                      );
                 return (
                   <div
                     key={day.date}
                     className="flex min-w-0 flex-1 flex-col items-center gap-1"
-                    title={`${day.date}: сделано ${day.done}, пропуск ${day.skipped}`}
+                    title={`${day.date}: норма/сильно ${day.done}, частично ${day.partial}, пропуск ${day.skipped}`}
                   >
                     <span className="text-[10px] text-[var(--faint)]">
-                      {day.done || "·"}
+                      {total || "·"}
                     </span>
                     <div
-                      className="w-full max-w-[2.25rem] rounded-sm bg-[var(--accent)]/80"
+                      className={`w-full max-w-[2.25rem] rounded-sm ${
+                        day.done > 0
+                          ? "bg-[var(--level-done)]/85"
+                          : day.partial > 0
+                            ? "bg-[var(--level-partial)]/90"
+                            : "bg-[var(--panel-2)]"
+                      }`}
                       style={{ height }}
                     />
                     <span className="truncate text-[10px] uppercase text-[var(--muted)]">
@@ -168,12 +184,12 @@ export function ReviewView() {
                     className="flex flex-wrap items-center justify-between gap-2 text-sm"
                   >
                     <span className="text-[var(--ink)]">{p.title}</span>
-                    {p.status === "done" ? (
-                      <Badge tone="accent">сделано</Badge>
-                    ) : p.status === "skipped" ? (
-                      <Badge tone="muted">пропуск</Badge>
-                    ) : (
+                    {p.status === "open" ? (
                       <Badge>ещё открыто</Badge>
+                    ) : (
+                      <Badge tone={levelTone(p.status)}>
+                        {LEVEL_LABEL[p.status]}
+                      </Badge>
                     )}
                   </li>
                 ))}
