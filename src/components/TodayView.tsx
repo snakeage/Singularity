@@ -21,6 +21,7 @@ import {
 } from "@/lib/selectors";
 import type { AppData, CheckIn, Practice } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
+import { EffortScaleLegend } from "./EffortScaleLegend";
 import { PathMap } from "./PathMap";
 import { PracticeHistoryStrip } from "./PracticeHistoryStrip";
 import { PracticeTimer } from "./PracticeTimer";
@@ -270,12 +271,8 @@ export function TodayView() {
       {stage ? <TeacherLane stageId={stage.id} /> : null}
       <PathMap compact />
 
-      <Hint title="Честная шкала">
-        <p>
-          <strong>Частично</strong> — были минуты, но меньше плана.{" "}
-          <strong>Норма</strong> — план закрыт. <strong>Сильно</strong> — от
-          1.5× минимума. XP только за норму и сильно.
-        </p>
+      <Hint title="Шкала усилия">
+        <EffortScaleLegend />
       </Hint>
 
       {!stage ? (

@@ -77,9 +77,28 @@ export function longRunThresholdMinutes(practice: Practice): number {
 export type HistoryDot = {
   key: string;
   label: string;
+  /** Full date for tooltips, e.g. «чт, 16 июля». */
+  titleDate: string;
   status: CheckInStatus | null;
   minutesSpent?: number;
+  isCurrent?: boolean;
 };
+
+/** Short weekday without trailing dot: пн, вт, … */
+function shortWeekday(d: Date): string {
+  return d
+    .toLocaleDateString("ru-RU", { weekday: "short" })
+    .replace(/\.$/, "")
+    .toLowerCase();
+}
+
+function fullDayLabel(d: Date): string {
+  return d.toLocaleDateString("ru-RU", {
+    weekday: "short",
+    day: "numeric",
+    month: "long",
+  });
+}
 
 export function getPracticeHistory(
   data: AppData,
@@ -88,23 +107,31 @@ export function getPracticeHistory(
 ): HistoryDot[] {
   const dots: HistoryDot[] = [];
   const cursor = new Date();
+  const todayKey = toISODate(cursor);
+  const thisWeekKey = weekStartISO(cursor);
 
   for (let i = 0; i < count; i += 1) {
     const d = new Date(cursor);
     if (practice.frequency === "weekly") {
       d.setDate(d.getDate() - i * 7);
       const key = weekStartISO(d);
+      const weekDate = parseISODate(key);
       const checkIn = data.checkIns.find(
         (c) => c.practiceId === practice.id && c.date === key,
       );
       dots.push({
         key,
-        label: parseISODate(key).toLocaleDateString("ru-RU", {
+        label: weekDate.toLocaleDateString("ru-RU", {
           day: "numeric",
           month: "short",
         }),
+        titleDate: weekDate.toLocaleDateString("ru-RU", {
+          day: "numeric",
+          month: "long",
+        }),
         status: checkIn?.status ?? null,
         minutesSpent: checkIn?.minutesSpent,
+        isCurrent: key === thisWeekKey,
       });
     } else {
       d.setDate(d.getDate() - i);
@@ -114,9 +141,11 @@ export function getPracticeHistory(
       );
       dots.push({
         key,
-        label: d.toLocaleDateString("ru-RU", { weekday: "narrow" }),
+        label: shortWeekday(d),
+        titleDate: fullDayLabel(d),
         status: checkIn?.status ?? null,
         minutesSpent: checkIn?.minutesSpent,
+        isCurrent: key === todayKey,
       });
     }
   }

@@ -1,73 +1,97 @@
 "use client";
 
+import { useState } from "react";
 import { getPracticeHistory, LEVEL_LABEL } from "@/lib/practiceLevels";
-import type { Practice } from "@/lib/types";
+import type { CheckInStatus, Practice } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
 
-const SCALE = [
-  { level: "open", label: "пусто" },
-  { level: "partial", label: "меньше" },
-  { level: "done", label: "норма" },
-  { level: "strong", label: "сверх" },
-] as const;
+type HistoryCell = ReturnType<typeof getPracticeHistory>[number];
+
+function statusLine(cell: HistoryCell, mode: "idle" | "peek"): string {
+  const when =
+    mode === "idle" && cell.isCurrent
+      ? cell.label.length <= 3
+        ? "сегодня"
+        : "эта неделя"
+      : cell.titleDate;
+  if (!cell.status) return `${when} · пусто`;
+  const minutes =
+    cell.minutesSpent != null ? ` · ${cell.minutesSpent} мин` : "";
+  return `${when} · ${LEVEL_LABEL[cell.status]}${minutes}`;
+}
+
+function levelForDot(status: CheckInStatus | null): string {
+  return status ?? "open";
+}
 
 export function PracticeHistoryStrip({ practice }: { practice: Practice }) {
   const { data } = useApp();
   const cells = getPracticeHistory(data, practice, 7);
+  const [peekKey, setPeekKey] = useState<string | null>(null);
+
+  const span =
+    practice.frequency === "weekly" ? "7 недель" : "7 дней";
+  const current = cells.find((c) => c.isCurrent) ?? cells[cells.length - 1];
+  const peeked = peekKey
+    ? cells.find((c) => c.key === peekKey) ?? null
+    : null;
+  const shown = peeked ?? current;
+  const mode = peeked ? "peek" : "idle";
 
   return (
     <div className="mt-3 space-y-2">
-      <div className="flex items-baseline justify-between gap-2">
-        <p className="text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">
-          {practice.frequency === "weekly" ? "7 недель" : "7 дней"}
+      <div className="flex min-h-[1.25rem] items-center justify-between gap-3">
+        <p className="shrink-0 text-[10px] uppercase tracking-[0.08em] text-[var(--faint)]">
+          {span}
         </p>
-        <p className="text-[10px] text-[var(--faint)]">
-          наведи на клетку — минуты и статус
-        </p>
+        {shown ? (
+          <p
+            className="history-readout flex min-w-0 items-center justify-end gap-1.5 text-[11px] text-[var(--muted)]"
+            data-active={peeked ? "true" : undefined}
+            aria-live="polite"
+          >
+            <span
+              className="history-cell history-cell--sm shrink-0"
+              data-level={levelForDot(shown.status)}
+              aria-hidden
+            />
+            <span className="truncate font-medium text-[var(--ink)]">
+              {statusLine(shown, mode)}
+            </span>
+          </p>
+        ) : null}
       </div>
 
-      <div className="flex items-end gap-1.5">
+      <div className="history-strip-track flex items-end gap-1.5">
         {cells.map((cell) => (
-          <div
+          <button
             key={cell.key}
-            className="flex min-w-0 flex-1 flex-col items-center gap-1.5"
-            title={
-              cell.status
-                ? `${cell.label}: ${LEVEL_LABEL[cell.status]}${
-                    cell.minutesSpent != null
-                      ? ` · ${cell.minutesSpent} мин`
-                      : ""
-                  }`
-                : `${cell.label}: пусто`
-            }
+            type="button"
+            className="history-cell-wrap flex min-w-0 flex-1 flex-col items-center gap-1.5 border-0 bg-transparent p-0"
+            data-current={cell.isCurrent ? "true" : undefined}
+            data-peek={peekKey === cell.key ? "true" : undefined}
+            aria-label={statusLine(cell, "peek")}
+            onMouseEnter={() => setPeekKey(cell.key)}
+            onMouseLeave={() => setPeekKey(null)}
+            onFocus={() => setPeekKey(cell.key)}
+            onBlur={() => setPeekKey(null)}
           >
             <span
               className="history-cell"
               data-level={cell.status ?? "open"}
+              data-current={cell.isCurrent ? "true" : undefined}
             />
-            <span className="truncate text-[9px] uppercase text-[var(--faint)]">
+            <span
+              className={`truncate text-[10px] tracking-[0.02em] ${
+                cell.isCurrent || peekKey === cell.key
+                  ? "font-semibold text-[var(--ink)]"
+                  : "text-[var(--faint)]"
+              }`}
+            >
               {cell.label}
             </span>
-          </div>
+          </button>
         ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 text-[10px] text-[var(--muted)]">
-        <span className="text-[var(--faint)]">слабее</span>
-        <ul className="flex items-center gap-1">
-          {SCALE.map((item) => (
-            <li key={item.level} className="inline-flex items-center gap-1">
-              <span
-                className="history-cell history-cell--sm"
-                data-level={item.level}
-                title={item.label}
-              />
-            </li>
-          ))}
-        </ul>
-        <span className="text-[var(--faint)]">сильнее</span>
-        <span className="text-[var(--faint)]">·</span>
-        <span>янтарь = меньше плана · бирюза = норма · тёмный = сверх</span>
       </div>
     </div>
   );
