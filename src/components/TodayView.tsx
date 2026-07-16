@@ -13,6 +13,7 @@ import {
 import type { AppData, CheckIn, Practice } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
 import { PathMap } from "./PathMap";
+import { PracticeTimer } from "./PracticeTimer";
 import { ProgressHud } from "./ProgressHud";
 import {
   Badge,
@@ -76,6 +77,11 @@ function PracticeCard({
           Когда/где: {practice.cue}
         </p>
       ) : null}
+      {practice.minMinutes ? (
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Минимум по времени: {practice.minMinutes} мин
+        </p>
+      ) : null}
       {practice.whyForStage ? (
         <p className="mt-1 text-xs text-[var(--muted)]">
           Зачем этапу: {practice.whyForStage}
@@ -87,12 +93,20 @@ function PracticeCard({
           отмечать каждый день.
         </p>
       ) : null}
+
+      {checkIn?.status !== "skipped" ? (
+        <PracticeTimer practice={practice} checkIn={checkIn} />
+      ) : null}
+
       <div className="mt-3 flex flex-wrap gap-2">
         {checkIn?.status === "done" ? (
           <>
             <Button type="button" variant="primary" disabled>
-              {isWeekly ? "Сделано на этой неделе ✓" : "Сделано ✓"} ·{" "}
-              {XP_HINTS.checkIn}
+              {isWeekly ? "Сделано на этой неделе ✓" : "Сделано ✓"}
+              {checkIn.minutesSpent != null
+                ? ` · ${checkIn.minutesSpent} мин`
+                : ""}{" "}
+              · {XP_HINTS.checkIn}
             </Button>
             <Button type="button" variant="ghost" onClick={onClear}>
               Отменить
@@ -112,8 +126,8 @@ function PracticeCard({
           </>
         ) : (
           <>
-            <Button type="button" variant="primary" onClick={onDone}>
-              Сделано · {XP_HINTS.checkIn}
+            <Button type="button" variant="ghost" onClick={onDone}>
+              Сделано без таймера · {XP_HINTS.checkIn}
             </Button>
             <Button type="button" variant="ghost" onClick={onSkip}>
               Пропуск

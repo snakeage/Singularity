@@ -67,6 +67,8 @@ export type Practice = {
   whyForStage?: string;
   /** Short labels for filter/search, e.g. "сила", "учёба" */
   tags?: string[];
+  /** Minimum focused minutes for a done mark (optional). */
+  minMinutes?: number;
   status: PracticeStatus;
   createdAt: string;
 };
@@ -78,7 +80,17 @@ export type CheckIn = {
   date: string;
   status: CheckInStatus;
   note?: string;
+  /** Minutes actually spent (from timer or manual). */
+  minutesSpent?: number;
   createdAt: string;
+};
+
+/** Pause/resume session for a practice timer. */
+export type PracticeTimerSession = {
+  practiceId: string;
+  accumulatedMs: number;
+  /** ISO timestamp while running; null when paused. */
+  runningSince: string | null;
 };
 
 export type GrowthSource = {
@@ -149,6 +161,7 @@ export type AppData = {
   obstacles: Obstacle[];
   intentions: ImplementationIntention[];
   reviews: Review[];
+  practiceTimers: PracticeTimerSession[];
 };
 
 export const EMPTY_DATA: AppData = {
@@ -164,4 +177,5 @@ export const EMPTY_DATA: AppData = {
   obstacles: [],
   intentions: [],
   reviews: [],
+  practiceTimers: [],
 };

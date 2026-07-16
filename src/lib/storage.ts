@@ -20,6 +20,9 @@ export function loadData(): AppData {
         reminders: normalizeReminders(parsed.profile?.reminders),
         strictLadder: Boolean(parsed.profile?.strictLadder),
       },
+      practiceTimers: Array.isArray(parsed.practiceTimers)
+        ? parsed.practiceTimers
+        : [],
       version: 1,
     };
   } catch {

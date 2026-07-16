@@ -74,6 +74,7 @@ export function StageView() {
   const [pWhy, setPWhy] = useState("");
   const [pFocus, setPFocus] = useState("");
   const [pTags, setPTags] = useState("");
+  const [pMinMinutes, setPMinMinutes] = useState("");
   const [practiceQuery, setPracticeQuery] = useState("");
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [editingPracticeId, setEditingPracticeId] = useState<string | null>(
@@ -85,6 +86,7 @@ export function StageView() {
   const [pEditWhy, setPEditWhy] = useState("");
   const [pEditFocus, setPEditFocus] = useState("");
   const [pEditTags, setPEditTags] = useState("");
+  const [pEditMinMinutes, setPEditMinMinutes] = useState("");
 
   const [sTitle, setSTitle] = useState("");
   const [sType, setSType] = useState<GrowthSourceType>("ai");
@@ -162,12 +164,14 @@ export function StageView() {
       whyForStage: pWhy,
       focus: pFocus,
       tags: pTags,
+      minMinutes: pMinMinutes,
     });
     setPTitle("");
     setPCue("");
     setPWhy("");
     setPFocus("");
     setPTags("");
+    setPMinMinutes("");
   }
 
   function onAddSource(e: FormEvent) {
@@ -496,6 +500,16 @@ export function StageView() {
                       placeholder="сила, учёба"
                     />
                   </Field>
+                  <Field label="Минимум минут">
+                    <Input
+                      type="number"
+                      min={1}
+                      max={1440}
+                      value={pEditMinMinutes}
+                      onChange={(e) => setPEditMinMinutes(e.target.value)}
+                      placeholder="например: 25"
+                    />
+                  </Field>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
@@ -508,6 +522,7 @@ export function StageView() {
                           whyForStage: pEditWhy,
                           focus: pEditFocus,
                           tags: pEditTags,
+                          minMinutes: pEditMinMinutes,
                         });
                         setEditingPracticeId(null);
                       }}
@@ -532,6 +547,11 @@ export function StageView() {
                         ? "каждый день"
                         : "каждую неделю"}
                     </span>
+                    {p.minMinutes ? (
+                      <span className="text-xs text-[var(--faint)]">
+                        ≥ {p.minMinutes} мин
+                      </span>
+                    ) : null}
                     {(p.tags ?? []).map((tag) => (
                       <button
                         key={tag}
@@ -561,6 +581,9 @@ export function StageView() {
                         setPEditWhy(p.whyForStage ?? "");
                         setPEditFocus(p.focus ?? "");
                         setPEditTags(formatTags(p.tags));
+                        setPEditMinMinutes(
+                          p.minMinutes != null ? String(p.minMinutes) : "",
+                        );
                       }}
                     >
                       Изменить
@@ -644,6 +667,20 @@ export function StageView() {
             />
             <FieldHint>
               Через запятую или пробел. Нужны для фильтра, когда практик много.
+            </FieldHint>
+          </Field>
+          <Field label="Минимум минут (для таймера)">
+            <Input
+              type="number"
+              min={1}
+              max={1440}
+              value={pMinMinutes}
+              onChange={(e) => setPMinMinutes(e.target.value)}
+              placeholder="например: 25"
+            />
+            <FieldHint>
+              На «Сегодня» можно запустить таймер, ставить на паузу и отметить
+              практику с фактическим временем. Пусто = без минимума.
             </FieldHint>
           </Field>
           <Button type="submit">Добавить практику</Button>

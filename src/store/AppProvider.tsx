@@ -28,6 +28,7 @@ import { loadData, saveData } from "@/lib/storage";
 import { normalizeReminders } from "@/lib/reminders";
 import { canActivateStage } from "@/lib/stages";
 import { parseTags } from "@/lib/tags";
+import { elapsedToMinutes, getTimerElapsedMs, parseMinMinutes } from "@/lib/timer";
 import {
   EMPTY_DATA,
   type AppData,
@@ -119,6 +120,7 @@ type AppContextValue = {
       focus?: string;
       whyForStage?: string;
       tags?: string;
+      minMinutes?: string;
     },
   ) => void;
   updatePractice: (
@@ -130,9 +132,18 @@ type AppContextValue = {
       focus?: string;
       whyForStage?: string;
       tags?: string;
+      minMinutes?: string;
     },
   ) => void;
   removePractice: (practiceId: string) => void;
+  startPracticeTimer: (practiceId: string) => void;
+  pausePracticeTimer: (practiceId: string) => void;
+  resetPracticeTimer: (practiceId: string) => void;
+  /** Mark period done using timer minutes; clears the session. */
+  completePracticeWithTimer: (
+    practiceId: string,
+    frequency: PracticeFrequency,
+  ) => { minutesSpent: number; metMinimum: boolean };
   updateProfile: (patch: {
     name?: string;
     reminders?: Reminders;
@@ -150,6 +161,7 @@ type AppContextValue = {
     practiceId: string,
     frequency: PracticeFrequency,
     status: CheckInStatus,
+    minutesSpent?: number,
   ) => void;
   clearPracticePeriodCheckIn: (
     practiceId: string,
@@ -666,6 +678,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addPractice: AppContextValue["addPractice"] = useCallback(
     (stageId, input) => {
       const tags = parseTags(input.tags ?? "");
+      const minMinutes = parseMinMinutes(input.minMinutes ?? "");
       setData(
         persist((prev) => ({
           ...prev,
@@ -680,6 +693,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               focus: input.focus?.trim() || undefined,
               whyForStage: input.whyForStage?.trim() || undefined,
               tags: tags.length ? tags : undefined,
+              minMinutes,
               status: "active",
               createdAt: nowISO(),
             },
@@ -693,6 +707,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updatePractice: AppContextValue["updatePractice"] = useCallback(
     (practiceId, input) => {
       const tags = parseTags(input.tags ?? "");
+      const minMinutes = parseMinMinutes(input.minMinutes ?? "");
       setData(
         persist((prev) => ({
           ...prev,
@@ -706,6 +721,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   focus: input.focus?.trim() || undefined,
                   whyForStage: input.whyForStage?.trim() || undefined,
                   tags: tags.length ? tags : undefined,
+                  minMinutes,
                 }
               : p,
           ),
@@ -722,11 +738,146 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev,
           practices: prev.practices.filter((p) => p.id !== practiceId),
           checkIns: prev.checkIns.filter((c) => c.practiceId !== practiceId),
+          practiceTimers: (prev.practiceTimers ?? []).filter(
+            (t) => t.practiceId !== practiceId,
+          ),
         })),
       );
     },
     [],
   );
+
+  const startPracticeTimer: AppContextValue["startPracticeTimer"] = useCallback(
+    (practiceId) => {
+      const ts = nowISO();
+      setData(
+        persist((prev) => {
+          const timers = prev.practiceTimers ?? [];
+          // Only one running timer: pause others.
+          const pausedOthers = timers.map((t) => {
+            if (t.practiceId === practiceId || !t.runningSince) return t;
+            return {
+              ...t,
+              accumulatedMs: getTimerElapsedMs(t),
+              runningSince: null,
+            };
+          });
+          const existing = pausedOthers.find((t) => t.practiceId === practiceId);
+          if (existing) {
+            if (existing.runningSince) return prev;
+            return {
+              ...prev,
+              practiceTimers: pausedOthers.map((t) =>
+                t.practiceId === practiceId
+                  ? { ...t, runningSince: ts }
+                  : t,
+              ),
+            };
+          }
+          return {
+            ...prev,
+            practiceTimers: [
+              ...pausedOthers,
+              {
+                practiceId,
+                accumulatedMs: 0,
+                runningSince: ts,
+              },
+            ],
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  const pausePracticeTimer: AppContextValue["pausePracticeTimer"] = useCallback(
+    (practiceId) => {
+      setData(
+        persist((prev) => {
+          const timers = prev.practiceTimers ?? [];
+          const existing = timers.find((t) => t.practiceId === practiceId);
+          if (!existing?.runningSince) return prev;
+          return {
+            ...prev,
+            practiceTimers: timers.map((t) =>
+              t.practiceId === practiceId
+                ? {
+                    ...t,
+                    accumulatedMs: getTimerElapsedMs(t),
+                    runningSince: null,
+                  }
+                : t,
+            ),
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  const resetPracticeTimer: AppContextValue["resetPracticeTimer"] = useCallback(
+    (practiceId) => {
+      setData(
+        persist((prev) => ({
+          ...prev,
+          practiceTimers: (prev.practiceTimers ?? []).filter(
+            (t) => t.practiceId !== practiceId,
+          ),
+        })),
+      );
+    },
+    [],
+  );
+
+  const completePracticeWithTimer: AppContextValue["completePracticeWithTimer"] =
+    useCallback((practiceId, frequency) => {
+      const ref = new Date();
+      const periodKey =
+        frequency === "weekly" ? weekStartISO(ref) : todayISO();
+      const weekStart = weekStartISO(ref);
+      const weekEnd = weekEndISO(ref);
+      let minutesSpent = 0;
+      let metMinimum = true;
+
+      setData(
+        persist((prev) => {
+          const session = (prev.practiceTimers ?? []).find(
+            (t) => t.practiceId === practiceId,
+          );
+          const practice = prev.practices.find((p) => p.id === practiceId);
+          minutesSpent = elapsedToMinutes(getTimerElapsedMs(session));
+          metMinimum =
+            !practice?.minMinutes || minutesSpent >= practice.minMinutes;
+
+          const withoutPeriod = prev.checkIns.filter((c) => {
+            if (c.practiceId !== practiceId) return true;
+            if (frequency === "daily") return c.date !== periodKey;
+            return !(c.date >= weekStart && c.date <= weekEnd);
+          });
+
+          return {
+            ...prev,
+            checkIns: [
+              ...withoutPeriod,
+              {
+                id: createId("checkin"),
+                practiceId,
+                date: periodKey,
+                status: "done" as const,
+                minutesSpent: minutesSpent > 0 ? minutesSpent : undefined,
+                createdAt: nowISO(),
+              },
+            ],
+            practiceTimers: (prev.practiceTimers ?? []).filter(
+              (t) => t.practiceId !== practiceId,
+            ),
+          };
+        }),
+      );
+
+      return { minutesSpent, metMinimum };
+    }, []);
 
   const updateProfile: AppContextValue["updateProfile"] = useCallback(
     (patch) => {
@@ -821,7 +972,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const setPracticePeriodCheckIn: AppContextValue["setPracticePeriodCheckIn"] =
-    useCallback((practiceId, frequency, status) => {
+    useCallback((practiceId, frequency, status, minutesSpent) => {
       const ref = new Date();
       const periodKey =
         frequency === "weekly" ? weekStartISO(ref) : todayISO();
@@ -844,9 +995,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 practiceId,
                 date: periodKey,
                 status,
+                minutesSpent:
+                  status === "done" && minutesSpent && minutesSpent > 0
+                    ? minutesSpent
+                    : undefined,
                 createdAt: nowISO(),
               },
             ],
+            practiceTimers:
+              status === "done"
+                ? (prev.practiceTimers ?? []).filter(
+                    (t) => t.practiceId !== practiceId,
+                  )
+                : (prev.practiceTimers ?? []),
           };
         }),
       );
@@ -1113,6 +1274,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addPractice,
       updatePractice,
       removePractice,
+      startPracticeTimer,
+      pausePracticeTimer,
+      resetPracticeTimer,
+      completePracticeWithTimer,
       updateProfile,
       markReminderSent,
       setCheckIn,
@@ -1154,6 +1319,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addPractice,
       updatePractice,
       removePractice,
+      startPracticeTimer,
+      pausePracticeTimer,
+      resetPracticeTimer,
+      completePracticeWithTimer,
       updateProfile,
       markReminderSent,
       setCheckIn,

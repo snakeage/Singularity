@@ -34,6 +34,9 @@ export function parseBackup(raw: string): AppData {
         reminders: normalizeReminders(parsed.data.profile?.reminders),
         strictLadder: Boolean(parsed.data.profile?.strictLadder),
       },
+      practiceTimers: Array.isArray(parsed.data.practiceTimers)
+        ? parsed.data.practiceTimers
+        : [],
       version: 1,
     };
   }
@@ -54,6 +57,9 @@ export function parseBackup(raw: string): AppData {
         reminders: normalizeReminders(data.profile?.reminders),
         strictLadder: Boolean(data.profile?.strictLadder),
       },
+      practiceTimers: Array.isArray(data.practiceTimers)
+        ? data.practiceTimers
+        : [],
       version: 1,
     };
   }
