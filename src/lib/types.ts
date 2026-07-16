@@ -65,6 +65,8 @@ export type Practice = {
   cue?: string;
   focus?: string;
   whyForStage?: string;
+  /** Short labels for filter/search, e.g. "сила", "учёба" */
+  tags?: string[];
   status: PracticeStatus;
   createdAt: string;
 };
@@ -130,6 +132,8 @@ export type Reminders = {
 export type Profile = {
   name: string;
   reminders?: Reminders;
+  /** Block activating a stage while earlier ones are unfinished. */
+  strictLadder?: boolean;
 };
 
 export type AppData = {

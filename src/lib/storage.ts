@@ -18,6 +18,7 @@ export function loadData(): AppData {
       profile: {
         name: parsed.profile?.name?.trim() ?? "",
         reminders: normalizeReminders(parsed.profile?.reminders),
+        strictLadder: Boolean(parsed.profile?.strictLadder),
       },
       version: 1,
     };

@@ -32,6 +32,7 @@ export function parseBackup(raw: string): AppData {
       profile: {
         name: parsed.data.profile?.name?.trim() ?? "",
         reminders: normalizeReminders(parsed.data.profile?.reminders),
+        strictLadder: Boolean(parsed.data.profile?.strictLadder),
       },
       version: 1,
     };
@@ -51,6 +52,7 @@ export function parseBackup(raw: string): AppData {
       profile: {
         name: data.profile?.name?.trim() ?? "",
         reminders: normalizeReminders(data.profile?.reminders),
+        strictLadder: Boolean(data.profile?.strictLadder),
       },
       version: 1,
     };

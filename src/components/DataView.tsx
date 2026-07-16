@@ -121,6 +121,37 @@ export function DataView() {
       </Section>
 
       <Section
+        title="Правила пути"
+        hint="Как у Ника: не перескакивать ступень, пока не закрыл текущую."
+      >
+        <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-4">
+          <label className="flex items-start gap-2 text-sm text-[var(--ink)]">
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={Boolean(data.profile?.strictLadder)}
+              onChange={(e) => {
+                updateProfile({ strictLadder: e.target.checked });
+                setMessage(
+                  e.target.checked
+                    ? "Строгий режим включён: нельзя прыгать через незакрытые этапы."
+                    : "Строгий режим выключен.",
+                );
+                setError(null);
+              }}
+            />
+            <span>
+              <span className="font-medium">Не перепрыгивать этапы</span>
+              <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                Активным можно сделать только следующий незакрытый этап. Закрытие
+                текущего открывает следующий.
+              </span>
+            </span>
+          </label>
+        </div>
+      </Section>
+
+      <Section
         title="Напоминания"
         hint="Лёгкий пинок по незакрытым ежедневным практикам. Работает, пока открыта вкладка приложения."
       >

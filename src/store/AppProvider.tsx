@@ -26,6 +26,8 @@ import {
 } from "@/lib/selectors";
 import { loadData, saveData } from "@/lib/storage";
 import { normalizeReminders } from "@/lib/reminders";
+import { canActivateStage } from "@/lib/stages";
+import { parseTags } from "@/lib/tags";
 import {
   EMPTY_DATA,
   type AppData,
@@ -115,6 +117,7 @@ type AppContextValue = {
       cue?: string;
       focus?: string;
       whyForStage?: string;
+      tags?: string;
     },
   ) => void;
   updatePractice: (
@@ -125,10 +128,15 @@ type AppContextValue = {
       cue?: string;
       focus?: string;
       whyForStage?: string;
+      tags?: string;
     },
   ) => void;
   removePractice: (practiceId: string) => void;
-  updateProfile: (patch: { name?: string; reminders?: Reminders }) => void;
+  updateProfile: (patch: {
+    name?: string;
+    reminders?: Reminders;
+    strictLadder?: boolean;
+  }) => void;
   markReminderSent: (dateISO: string) => void;
   setCheckIn: (
     practiceId: string,
@@ -320,6 +328,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const ts = nowISO();
       setData(
         persist((prev) => {
+          const safeActiveIndex = prev.profile?.strictLadder
+            ? 0
+            : activeIndex;
           const oldStageIds = prev.stages
             .filter((s) => s.dreamId === dreamId)
             .map((s) => s.id);
@@ -331,7 +342,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             objective: s.objective.trim(),
             exitCriteria: s.exitCriteria.trim(),
             status:
-              i === activeIndex
+              i === safeActiveIndex
                 ? ("active" as const)
                 : ("planned" as const),
             createdAt: ts,
@@ -499,22 +510,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const setActiveStage: AppContextValue["setActiveStage"] = useCallback(
     (dreamId, stageId) => {
       setData(
-        persist((prev) => ({
-          ...prev,
-          stages: prev.stages.map((s) => {
-            if (s.dreamId !== dreamId) return s;
-            return {
-              ...s,
-              status:
-                s.id === stageId
-                  ? "active"
-                  : s.status === "completed"
-                    ? "completed"
-                    : "planned",
-              updatedAt: nowISO(),
-            };
-          }),
-        })),
+        persist((prev) => {
+          if (!canActivateStage(prev, dreamId, stageId).ok) return prev;
+          return {
+            ...prev,
+            stages: prev.stages.map((s) => {
+              if (s.dreamId !== dreamId) return s;
+              return {
+                ...s,
+                status:
+                  s.id === stageId
+                    ? "active"
+                    : s.status === "completed"
+                      ? "completed"
+                      : "planned",
+                updatedAt: nowISO(),
+              };
+            }),
+          };
+        }),
       );
     },
     [],
@@ -629,6 +643,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addPractice: AppContextValue["addPractice"] = useCallback(
     (stageId, input) => {
+      const tags = parseTags(input.tags ?? "");
       setData(
         persist((prev) => ({
           ...prev,
@@ -642,6 +657,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               cue: input.cue?.trim() || undefined,
               focus: input.focus?.trim() || undefined,
               whyForStage: input.whyForStage?.trim() || undefined,
+              tags: tags.length ? tags : undefined,
               status: "active",
               createdAt: nowISO(),
             },
@@ -654,6 +670,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const updatePractice: AppContextValue["updatePractice"] = useCallback(
     (practiceId, input) => {
+      const tags = parseTags(input.tags ?? "");
       setData(
         persist((prev) => ({
           ...prev,
@@ -666,6 +683,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   cue: input.cue?.trim() || undefined,
                   focus: input.focus?.trim() || undefined,
                   whyForStage: input.whyForStage?.trim() || undefined,
+                  tags: tags.length ? tags : undefined,
                 }
               : p,
           ),
@@ -702,6 +720,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
               patch.reminders !== undefined
                 ? normalizeReminders(patch.reminders)
                 : normalizeReminders(prev.profile?.reminders),
+            strictLadder:
+              patch.strictLadder !== undefined
+                ? patch.strictLadder
+                : Boolean(prev.profile?.strictLadder),
           },
         })),
       );
@@ -717,6 +739,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return {
             ...prev,
             profile: {
+              ...prev.profile,
               name: prev.profile?.name ?? "",
               reminders: { ...reminders, lastSentDate: dateISO },
             },

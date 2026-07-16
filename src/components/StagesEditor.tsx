@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { canActivateStage } from "@/lib/stages";
 import { STAGE_TEMPLATES } from "@/lib/stageTemplates";
 import type { Stage } from "@/lib/types";
 import { useFlashMessage } from "@/lib/useFlashMessage";
@@ -35,6 +36,7 @@ type Props = {
 
 export function StagesEditor({ dreamId, stages }: Props) {
   const {
+    data,
     replaceStages,
     updateStage,
     addStage,
@@ -42,6 +44,7 @@ export function StagesEditor({ dreamId, stages }: Props) {
     moveStage,
     setActiveStage,
   } = useApp();
+  const strictLadder = Boolean(data.profile?.strictLadder);
 
   const createFlash = useFlashMessage();
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -97,6 +100,15 @@ export function StagesEditor({ dreamId, stages }: Props) {
           </p>
         </Hint>
 
+        {strictLadder ? (
+          <Hint title="Строгий режим">
+            <p>
+              Первый этап станет активным. Дальше — только после закрытия
+              текущего (настройка в Данные).
+            </p>
+          </Hint>
+        ) : null}
+
         <div className="mb-4 space-y-2">
           <p className="text-sm font-medium text-[var(--ink)]">
             Старт из шаблона
@@ -136,15 +148,23 @@ export function StagesEditor({ dreamId, stages }: Props) {
             >
               <div className="flex items-center justify-between">
                 <p className="text-sm font-medium">Этап {index + 1}</p>
-                <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
-                  <input
-                    type="radio"
-                    name="activeStage"
-                    checked={activeIndex === index}
-                    onChange={() => setActiveIndex(index)}
-                  />
-                  Активный
-                </label>
+                {strictLadder ? (
+                  index === 0 ? (
+                    <Badge tone="accent">стартовый</Badge>
+                  ) : (
+                    <span className="text-xs text-[var(--faint)]">позже</span>
+                  )
+                ) : (
+                  <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                    <input
+                      type="radio"
+                      name="activeStage"
+                      checked={activeIndex === index}
+                      onChange={() => setActiveIndex(index)}
+                    />
+                    Активный
+                  </label>
+                )}
               </div>
               <Field label="Название">
                 <Input
@@ -223,11 +243,16 @@ export function StagesEditor({ dreamId, stages }: Props) {
   return (
     <Section
       title="Этапы пути"
-      hint="Можно менять тексты и порядок ↑/↓, делать этап активным, добавлять и удалять (минимум 2, максимум 5)."
+      hint={
+        strictLadder
+          ? "Строгий режим: активным можно сделать только следующий незакрытый этап. Порядок ↑/↓, тексты, добавление и удаление — как обычно."
+          : "Можно менять тексты и порядок ↑/↓, делать этап активным, добавлять и удалять (минимум 2, максимум 5)."
+      }
     >
       <ul className="space-y-3">
         {stages.map((stage, index) => {
           const isEditing = editingId === stage.id;
+          const activate = canActivateStage(data, dreamId, stage.id);
           return (
             <li
               key={stage.id}
@@ -342,7 +367,17 @@ export function StagesEditor({ dreamId, stages }: Props) {
                       <Button
                         type="button"
                         variant="ghost"
-                        onClick={() => setActiveStage(dreamId, stage.id)}
+                        disabled={!activate.ok}
+                        title={
+                          activate.ok ? undefined : activate.reason
+                        }
+                        onClick={() => {
+                          if (!activate.ok) {
+                            window.alert(activate.reason);
+                            return;
+                          }
+                          setActiveStage(dreamId, stage.id);
+                        }}
                       >
                         Сделать активным
                       </Button>

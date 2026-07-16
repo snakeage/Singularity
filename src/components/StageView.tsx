@@ -9,9 +9,14 @@ import {
   getPractices,
   stageProgress,
 } from "@/lib/selectors";
+import { XP_HINTS } from "@/lib/gamification";
+import {
+  collectPracticeTags,
+  formatTags,
+  practiceMatchesQuery,
+} from "@/lib/tags";
 import type { GrowthSourceType, PracticeFrequency } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
-import { XP_HINTS } from "@/lib/gamification";
 import {
   Badge,
   Button,
@@ -68,6 +73,9 @@ export function StageView() {
   const [pCue, setPCue] = useState("");
   const [pWhy, setPWhy] = useState("");
   const [pFocus, setPFocus] = useState("");
+  const [pTags, setPTags] = useState("");
+  const [practiceQuery, setPracticeQuery] = useState("");
+  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [editingPracticeId, setEditingPracticeId] = useState<string | null>(
     null,
   );
@@ -76,6 +84,7 @@ export function StageView() {
   const [pEditCue, setPEditCue] = useState("");
   const [pEditWhy, setPEditWhy] = useState("");
   const [pEditFocus, setPEditFocus] = useState("");
+  const [pEditTags, setPEditTags] = useState("");
 
   const [sTitle, setSTitle] = useState("");
   const [sType, setSType] = useState<GrowthSourceType>("ai");
@@ -123,6 +132,10 @@ export function StageView() {
 
   const milestones = getMilestones(data, stage.id);
   const practices = getPractices(data, stage.id);
+  const practiceTags = collectPracticeTags(practices);
+  const filteredPractices = practices.filter((p) =>
+    practiceMatchesQuery(p, practiceQuery, activeTag),
+  );
   const sources = data.growthSources.filter((g) => g.stageId === stage.id);
   const progress = stageProgress(data, stage.id);
 
@@ -148,11 +161,13 @@ export function StageView() {
       cue: pCue,
       whyForStage: pWhy,
       focus: pFocus,
+      tags: pTags,
     });
     setPTitle("");
     setPCue("");
     setPWhy("");
     setPFocus("");
+    setPTags("");
   }
 
   function onAddSource(e: FormEvent) {
@@ -393,8 +408,49 @@ export function StageView() {
             почти стыдно не выполнить. Без практик рубеж («экзамен») не закрыть.
           </p>
         </Hint>
+
+        {practices.length > 0 ? (
+          <div className="space-y-2 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3">
+            <Field label="Поиск">
+              <Input
+                value={practiceQuery}
+                onChange={(e) => setPracticeQuery(e.target.value)}
+                placeholder="Название, фокус, тег…"
+              />
+            </Field>
+            {practiceTags.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setActiveTag(null)}
+                >
+                  Все
+                </Button>
+                {practiceTags.map((tag) => (
+                  <Button
+                    key={tag}
+                    type="button"
+                    variant={activeTag === tag ? "primary" : "ghost"}
+                    onClick={() =>
+                      setActiveTag((prev) => (prev === tag ? null : tag))
+                    }
+                  >
+                    #{tag}
+                  </Button>
+                ))}
+              </div>
+            ) : null}
+            {filteredPractices.length === 0 ? (
+              <p className="text-xs text-[var(--muted)]">
+                Ничего не найдено — сбрось поиск или тег.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
         <ul className="mb-3 space-y-2 text-sm">
-          {practices.map((p) => (
+          {filteredPractices.map((p) => (
             <li key={p.id} className="practice-card rounded-md p-3">
               {editingPracticeId === p.id ? (
                 <div className="space-y-2">
@@ -433,6 +489,13 @@ export function StageView() {
                       onChange={(e) => setPEditFocus(e.target.value)}
                     />
                   </Field>
+                  <Field label="Теги">
+                    <Input
+                      value={pEditTags}
+                      onChange={(e) => setPEditTags(e.target.value)}
+                      placeholder="сила, учёба"
+                    />
+                  </Field>
                   <div className="flex flex-wrap gap-2">
                     <Button
                       type="button"
@@ -444,6 +507,7 @@ export function StageView() {
                           cue: pEditCue,
                           whyForStage: pEditWhy,
                           focus: pEditFocus,
+                          tags: pEditTags,
                         });
                         setEditingPracticeId(null);
                       }}
@@ -461,13 +525,23 @@ export function StageView() {
                 </div>
               ) : (
                 <>
-                  <div className="mb-1 flex items-center gap-2">
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
                     <Badge tone="metal">Практика</Badge>
                     <span className="text-xs text-[var(--faint)]">
                       {p.frequency === "daily"
                         ? "каждый день"
                         : "каждую неделю"}
                     </span>
+                    {(p.tags ?? []).map((tag) => (
+                      <button
+                        key={tag}
+                        type="button"
+                        className="text-[10px] font-semibold uppercase tracking-[0.08em] text-[var(--accent)]"
+                        onClick={() => setActiveTag(tag)}
+                      >
+                        #{tag}
+                      </button>
+                    ))}
                   </div>
                   <p className="font-medium text-[var(--ink)]">{p.title}</p>
                   {p.whyForStage ? (
@@ -486,6 +560,7 @@ export function StageView() {
                         setPEditCue(p.cue ?? "");
                         setPEditWhy(p.whyForStage ?? "");
                         setPEditFocus(p.focus ?? "");
+                        setPEditTags(formatTags(p.tags));
                       }}
                     >
                       Изменить
@@ -560,6 +635,16 @@ export function StageView() {
               onChange={(e) => setPFocus(e.target.value)}
               placeholder="Что именно тренирую сегодня"
             />
+          </Field>
+          <Field label="Теги">
+            <Input
+              value={pTags}
+              onChange={(e) => setPTags(e.target.value)}
+              placeholder="сила, учёба, речь"
+            />
+            <FieldHint>
+              Через запятую или пробел. Нужны для фильтра, когда практик много.
+            </FieldHint>
           </Field>
           <Button type="submit">Добавить практику</Button>
         </form>
