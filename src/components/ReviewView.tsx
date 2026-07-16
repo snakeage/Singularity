@@ -3,10 +3,19 @@
 import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { weekStartISO } from "@/lib/dates";
-import { getFocusDream } from "@/lib/selectors";
-import { useApp } from "@/store/AppProvider";
 import { XP_HINTS } from "@/lib/gamification";
-import { Button, EmptyState, Field, Hint, Section, Textarea } from "./ui";
+import { getFocusDream, getWeekReviewStats } from "@/lib/selectors";
+import { useApp } from "@/store/AppProvider";
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  Hint,
+  ProgressBar,
+  Section,
+  Textarea,
+} from "./ui";
 
 export function ReviewView() {
   const { ready, data, saveReview } = useApp();
@@ -23,6 +32,7 @@ export function ReviewView() {
         (r) => r.dreamId === dream.id && r.weekStart === weekStart,
       )
     : undefined;
+  const stats = dream ? getWeekReviewStats(data, dream.id) : null;
 
   useEffect(() => {
     if (!current || hydrated) return;
@@ -55,6 +65,11 @@ export function ReviewView() {
     .filter((r) => r.dreamId === dream.id)
     .sort((a, b) => b.weekStart.localeCompare(a.weekStart));
 
+  const dailyCoverage =
+    stats && stats.dayBars.length > 0
+      ? stats.daysWithDone / stats.dayBars.length
+      : 0;
+
   function onSubmit(e: FormEvent) {
     e.preventDefault();
     saveReview({
@@ -73,18 +88,99 @@ export function ReviewView() {
           Обзор
         </p>
         <h1 className="font-display text-3xl tracking-tight text-[var(--ink)]">
-          Неделя с {weekStart}
+          Неделя {stats?.label ?? weekStart}
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Что сработало, что мешало, окна обучения. Мечта: {dream.title}
         </p>
       </div>
 
-      {current?.statsSnapshot ? (
-        <p className="text-sm text-[var(--muted)]">
-          За неделю: отметок «сделано» — {current.statsSnapshot.checkInsDone},
-          закрытых рубежей — {current.statsSnapshot.milestonesDone}
-        </p>
+      {stats ? (
+        <Section
+          title="Картина недели"
+          hint="Живые цифры по текущей неделе — до и после сохранения обзора."
+        >
+          <div className="grid gap-3 sm:grid-cols-3">
+            <StatCard
+              label="Сделано"
+              value={String(stats.doneCheckIns)}
+              hint="отметок практик"
+            />
+            <StatCard
+              label="Пропуски"
+              value={String(stats.skippedCheckIns)}
+              hint="осознанных пропусков"
+            />
+            <StatCard
+              label="Рубежи"
+              value={String(stats.milestonesDoneInWeek)}
+              hint="закрыто за неделю"
+            />
+          </div>
+
+          <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-4">
+            <div className="mb-2 flex items-end justify-between gap-2">
+              <p className="text-sm font-medium text-[var(--ink)]">
+                Дни с хотя бы одной сделанной практикой
+              </p>
+              <span className="text-xs text-[var(--muted)]">
+                {stats.daysWithDone}/7
+              </span>
+            </div>
+            <ProgressBar ratio={dailyCoverage} />
+            <div className="mt-4 flex h-28 items-end gap-1.5 sm:gap-2">
+              {stats.dayBars.map((day) => {
+                const height =
+                  day.done === 0
+                    ? 8
+                    : Math.max(16, Math.round((day.done / stats.maxDayDone) * 100));
+                return (
+                  <div
+                    key={day.date}
+                    className="flex min-w-0 flex-1 flex-col items-center gap-1"
+                    title={`${day.date}: сделано ${day.done}, пропуск ${day.skipped}`}
+                  >
+                    <span className="text-[10px] text-[var(--faint)]">
+                      {day.done || "·"}
+                    </span>
+                    <div
+                      className="w-full max-w-[2.25rem] rounded-sm bg-[var(--accent)]/80"
+                      style={{ height }}
+                    />
+                    <span className="truncate text-[10px] uppercase text-[var(--muted)]">
+                      {day.shortLabel}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {stats.weeklyPractices.length > 0 ? (
+            <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-4">
+              <p className="mb-2 text-sm font-medium text-[var(--ink)]">
+                Еженедельные практики
+              </p>
+              <ul className="space-y-2">
+                {stats.weeklyPractices.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                  >
+                    <span className="text-[var(--ink)]">{p.title}</span>
+                    {p.status === "done" ? (
+                      <Badge tone="accent">сделано</Badge>
+                    ) : p.status === "skipped" ? (
+                      <Badge tone="muted">пропуск</Badge>
+                    ) : (
+                      <Badge>ещё открыто</Badge>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </Section>
       ) : null}
 
       <Hint title="Зачем обзор">
@@ -141,9 +237,17 @@ export function ReviewView() {
                 key={r.id}
                 className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-4 text-sm"
               >
-                <p className="font-medium text-[var(--ink)]">
-                  Неделя с {r.weekStart}
-                </p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-[var(--ink)]">
+                    Неделя с {r.weekStart}
+                  </p>
+                  {r.statsSnapshot ? (
+                    <span className="text-xs text-[var(--faint)]">
+                      сделано {r.statsSnapshot.checkInsDone} · рубежи{" "}
+                      {r.statsSnapshot.milestonesDone}
+                    </span>
+                  ) : null}
+                </div>
                 <p className="mt-1 text-[var(--muted)]">
                   Сработало: {r.worked}
                 </p>
@@ -159,6 +263,26 @@ export function ReviewView() {
           </ul>
         </Section>
       ) : null}
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: string;
+  hint: string;
+}) {
+  return (
+    <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-3">
+      <p className="text-xs uppercase tracking-[0.08em] text-[var(--muted)]">
+        {label}
+      </p>
+      <p className="mt-1 font-display text-2xl text-[var(--ink)]">{value}</p>
+      <p className="text-xs text-[var(--faint)]">{hint}</p>
     </div>
   );
 }

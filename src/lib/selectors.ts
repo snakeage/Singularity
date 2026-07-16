@@ -1,5 +1,35 @@
-import { toISODate, weekEndISO, weekStartISO } from "./dates";
+import {
+  formatWeekLabel,
+  parseISODate,
+  toISODate,
+  weekEndISO,
+  weekStartISO,
+} from "./dates";
 import type { AppData, CheckIn, Dream, Milestone, Practice, Stage } from "./types";
+
+export type WeekDayBar = {
+  date: string;
+  shortLabel: string;
+  done: number;
+  skipped: number;
+};
+
+export type WeekReviewStats = {
+  weekStart: string;
+  weekEnd: string;
+  label: string;
+  doneCheckIns: number;
+  skippedCheckIns: number;
+  daysWithDone: number;
+  dayBars: WeekDayBar[];
+  maxDayDone: number;
+  weeklyPractices: Array<{
+    id: string;
+    title: string;
+    status: "done" | "skipped" | "open";
+  }>;
+  milestonesDoneInWeek: number;
+};
 
 export function getFocusDream(data: AppData): Dream | undefined {
   return (
@@ -92,4 +122,91 @@ export function getCheckInForPracticePeriod(
         c.date <= end,
     )
   );
+}
+
+/** Live stats for the current week — shown on Review before/after save. */
+export function getWeekReviewStats(
+  data: AppData,
+  dreamId: string,
+  refDate = new Date(),
+): WeekReviewStats {
+  const weekStart = weekStartISO(refDate);
+  const weekEnd = weekEndISO(refDate);
+  const stageIds = new Set(
+    getStagesForDream(data, dreamId).map((s) => s.id),
+  );
+  const practiceIds = new Set(
+    data.practices
+      .filter((p) => stageIds.has(p.stageId))
+      .map((p) => p.id),
+  );
+
+  const weekCheckIns = data.checkIns.filter(
+    (c) =>
+      c.practiceId &&
+      practiceIds.has(c.practiceId) &&
+      c.date >= weekStart &&
+      c.date <= weekEnd,
+  );
+
+  const dayBars: WeekDayBar[] = [];
+  const start = parseISODate(weekStart);
+  for (let i = 0; i < 7; i += 1) {
+    const d = new Date(start);
+    d.setDate(start.getDate() + i);
+    const date = toISODate(d);
+    const dayIns = weekCheckIns.filter((c) => c.date === date);
+    dayBars.push({
+      date,
+      shortLabel: d.toLocaleDateString("ru-RU", { weekday: "short" }),
+      done: dayIns.filter((c) => c.status === "done").length,
+      skipped: dayIns.filter((c) => c.status === "skipped").length,
+    });
+  }
+
+  const active = getActiveStage(data, dreamId);
+  const weeklyPractices = active
+    ? getPractices(data, active.id)
+        .filter((p) => p.frequency === "weekly")
+        .map((p) => {
+          const checkIn = getCheckInForPracticePeriod(data, p, refDate);
+          return {
+            id: p.id,
+            title: p.title,
+            status:
+              checkIn?.status === "done"
+                ? ("done" as const)
+                : checkIn?.status === "skipped"
+                  ? ("skipped" as const)
+                  : ("open" as const),
+          };
+        })
+    : [];
+
+  const milestonesDoneInWeek = data.milestones.filter((m) => {
+    if (m.status !== "done" || !m.completedAt || !stageIds.has(m.stageId)) {
+      return false;
+    }
+    const day = m.completedAt.slice(0, 10);
+    return day >= weekStart && day <= weekEnd;
+  }).length;
+
+  const doneCheckIns = weekCheckIns.filter((c) => c.status === "done").length;
+  const skippedCheckIns = weekCheckIns.filter(
+    (c) => c.status === "skipped",
+  ).length;
+  const maxDayDone = Math.max(1, ...dayBars.map((d) => d.done));
+
+  return {
+    weekStart,
+    weekEnd,
+    label: formatWeekLabel(weekStart),
+    doneCheckIns,
+    skippedCheckIns,
+    daysWithDone: dayBars.filter((d) => d.done > 0).length,
+    dayBars,
+    maxDayDone,
+    weeklyPractices,
+    milestonesDoneInWeek,
+  };
 }
