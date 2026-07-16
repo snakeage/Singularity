@@ -38,6 +38,7 @@ export function StagesEditor({ dreamId, stages }: Props) {
     updateStage,
     addStage,
     removeStage,
+    moveStage,
     setActiveStage,
   } = useApp();
 
@@ -192,10 +193,10 @@ export function StagesEditor({ dreamId, stages }: Props) {
   return (
     <Section
       title="Этапы пути"
-      hint="Можно менять тексты, делать этап активным, добавлять и удалять (минимум 2, максимум 5)."
+      hint="Можно менять тексты и порядок ↑/↓, делать этап активным, добавлять и удалять (минимум 2, максимум 5)."
     >
       <ul className="space-y-3">
-        {stages.map((stage) => {
+        {stages.map((stage, index) => {
           const isEditing = editingId === stage.id;
           return (
             <li
@@ -216,6 +217,26 @@ export function StagesEditor({ dreamId, stages }: Props) {
                 {stage.status === "completed" ? (
                   <Badge>пройден</Badge>
                 ) : null}
+                <div className="ml-auto flex gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={index === 0}
+                    onClick={() => moveStage(stage.id, "up")}
+                    aria-label="Поднять этап выше"
+                  >
+                    ↑
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    disabled={index === stages.length - 1}
+                    onClick={() => moveStage(stage.id, "down")}
+                    aria-label="Опустить этап ниже"
+                  >
+                    ↓
+                  </Button>
+                </div>
               </div>
 
               {isEditing ? (

@@ -92,6 +92,7 @@ type AppContextValue = {
     },
   ) => void;
   removeStage: (stageId: string) => void;
+  moveStage: (stageId: string, direction: "up" | "down") => void;
   setActiveStage: (dreamId: string, stageId: string) => void;
   completeStage: (stageId: string) => void;
   addMilestone: (
@@ -440,6 +441,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
             growthSources: prev.growthSources.filter(
               (g) => g.stageId !== stageId,
             ),
+          };
+        }),
+      );
+    },
+    [],
+  );
+
+  const moveStage: AppContextValue["moveStage"] = useCallback(
+    (stageId, direction) => {
+      setData(
+        persist((prev) => {
+          const stage = prev.stages.find((s) => s.id === stageId);
+          if (!stage) return prev;
+          const siblings = getStagesForDream(prev, stage.dreamId);
+          const index = siblings.findIndex((s) => s.id === stageId);
+          if (index < 0) return prev;
+          const swapWith = direction === "up" ? index - 1 : index + 1;
+          if (swapWith < 0 || swapWith >= siblings.length) return prev;
+
+          const reordered = [...siblings];
+          const [moved] = reordered.splice(index, 1);
+          reordered.splice(swapWith, 0, moved);
+          const ts = nowISO();
+          const nextForDream = reordered.map((s, i) => ({
+            ...s,
+            order: i + 1,
+            updatedAt: ts,
+          }));
+
+          return {
+            ...prev,
+            stages: [
+              ...prev.stages.filter((s) => s.dreamId !== stage.dreamId),
+              ...nextForDream,
+            ],
           };
         }),
       );
@@ -947,6 +983,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateStage,
       addStage,
       removeStage,
+      moveStage,
       setActiveStage,
       completeStage,
       addMilestone,
@@ -983,6 +1020,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updateStage,
       addStage,
       removeStage,
+      moveStage,
       setActiveStage,
       completeStage,
       addMilestone,
