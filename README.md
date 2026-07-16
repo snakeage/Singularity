@@ -1,36 +1,47 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Singularity
 
-## Getting Started
+Личный учебный веб-трекер достижения цели: глобальная мечта → честная точка А → этапы → рубежи и практики → недельный обзор.
 
-First, run the development server:
+Модель вдохновлена путём Ника из серии «Землянин» (Р. Злотников) и совмещена с проверенными методиками целеполагания и привычек.
+
+## Статус
+
+Рабочий MVP в браузере. Данные хранятся локально (`localStorage`); бэкап персонажа — JSON-файл.
+
+## Запуск
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Открой [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Экраны
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Путь | Назначение |
+| --- | --- |
+| `/` | Сегодня — практики активного этапа |
+| `/map` | Карта пути: старт → этапы → мечта |
+| `/dream` | Мечта, «где я сейчас», этапы, препятствия/планы |
+| `/stage` | Рубежи, практики, источники роста (в т.ч. ИИ) |
+| `/review` | Недельный обзор + окна обучения |
+| `/data` | Экспорт / импорт сейва персонажа |
 
-## Learn More
+## Документация
 
-To learn more about Next.js, take a look at the following resources:
+| Документ | О чём |
+| --- | --- |
+| [docs/vision.md](docs/vision.md) | Зачем проект, для кого, границы |
+| [docs/methodology.md](docs/methodology.md) | Лестница Ника + методики |
+| [docs/glossary.md](docs/glossary.md) | Термины |
+| [docs/requirements-mvp.md](docs/requirements-mvp.md) | User stories MVP |
+| [docs/data-model.md](docs/data-model.md) | Сущности и связи |
+| [docs/backlog.md](docs/backlog.md) | Идеи после MVP |
+| [docs/decisions/](docs/decisions/) | ADR |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Хранение данных
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- Живые данные: браузерный `localStorage` (ключ `singularity.appData.v1`)
+- Бэкап: JSON «сейв персонажа» (не код проекта) — кнопки на экране **Данные**
+- Импорт полностью заменяет текущие данные
