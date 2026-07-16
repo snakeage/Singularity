@@ -152,6 +152,16 @@ type AppContextValue = {
       notes?: string;
     },
   ) => void;
+  updateGrowthSource: (
+    sourceId: string,
+    input: {
+      title: string;
+      type: GrowthSourceType;
+      url?: string;
+      notes?: string;
+    },
+  ) => void;
+  removeGrowthSource: (sourceId: string) => void;
   addObstacle: (input: {
     dreamId?: string;
     stageId?: string;
@@ -809,6 +819,40 @@ export function AppProvider({ children }: { children: ReactNode }) {
     [],
   );
 
+  const updateGrowthSource: AppContextValue["updateGrowthSource"] = useCallback(
+    (sourceId, input) => {
+      setData(
+        persist((prev) => ({
+          ...prev,
+          growthSources: prev.growthSources.map((g) =>
+            g.id === sourceId
+              ? {
+                  ...g,
+                  title: input.title.trim(),
+                  type: input.type,
+                  url: input.url?.trim() || undefined,
+                  notes: input.notes?.trim() || undefined,
+                }
+              : g,
+          ),
+        })),
+      );
+    },
+    [],
+  );
+
+  const removeGrowthSource: AppContextValue["removeGrowthSource"] = useCallback(
+    (sourceId) => {
+      setData(
+        persist((prev) => ({
+          ...prev,
+          growthSources: prev.growthSources.filter((g) => g.id !== sourceId),
+        })),
+      );
+    },
+    [],
+  );
+
   const addObstacle: AppContextValue["addObstacle"] = useCallback((input) => {
     setData(
       persist((prev) => ({
@@ -999,6 +1043,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPracticePeriodCheckIn,
       clearPracticePeriodCheckIn,
       addGrowthSource,
+      updateGrowthSource,
+      removeGrowthSource,
       addObstacle,
       updateObstacle,
       removeObstacle,
@@ -1036,6 +1082,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setPracticePeriodCheckIn,
       clearPracticePeriodCheckIn,
       addGrowthSource,
+      updateGrowthSource,
+      removeGrowthSource,
       addObstacle,
       updateObstacle,
       removeObstacle,

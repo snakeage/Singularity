@@ -48,6 +48,8 @@ export function StageView() {
     updatePractice,
     removePractice,
     addGrowthSource,
+    updateGrowthSource,
+    removeGrowthSource,
     completeStage,
   } = useApp();
 
@@ -79,6 +81,11 @@ export function StageView() {
   const [sType, setSType] = useState<GrowthSourceType>("ai");
   const [sUrl, setSUrl] = useState("");
   const [sNotes, setSNotes] = useState("");
+  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [sEditTitle, setSEditTitle] = useState("");
+  const [sEditType, setSEditType] = useState<GrowthSourceType>("ai");
+  const [sEditUrl, setSEditUrl] = useState("");
+  const [sEditNotes, setSEditNotes] = useState("");
 
   if (!ready) {
     return <p className="text-sm text-[var(--muted)]">Загрузка…</p>;
@@ -568,11 +575,107 @@ export function StageView() {
               key={s.id}
               className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
             >
-              <p className="font-medium text-[var(--ink)]">{s.title}</p>
-              <p className="text-xs text-[var(--muted)]">
-                {sourceTypes.find((t) => t.value === s.type)?.label ?? s.type}
-                {s.url ? ` · ${s.url}` : ""}
-              </p>
+              {editingSourceId === s.id ? (
+                <div className="space-y-2">
+                  <Field label="Название">
+                    <Input
+                      value={sEditTitle}
+                      onChange={(e) => setSEditTitle(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Тип">
+                    <Select
+                      value={sEditType}
+                      onChange={(e) =>
+                        setSEditType(e.target.value as GrowthSourceType)
+                      }
+                    >
+                      {sourceTypes.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Ссылка">
+                    <Input
+                      value={sEditUrl}
+                      onChange={(e) => setSEditUrl(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Заметки">
+                    <Textarea
+                      value={sEditNotes}
+                      onChange={(e) => setSEditNotes(e.target.value)}
+                    />
+                  </Field>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!sEditTitle.trim()) return;
+                        updateGrowthSource(s.id, {
+                          title: sEditTitle,
+                          type: sEditType,
+                          url: sEditUrl,
+                          notes: sEditNotes,
+                        });
+                        setEditingSourceId(null);
+                      }}
+                    >
+                      Сохранить
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setEditingSourceId(null)}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <p className="font-medium text-[var(--ink)]">{s.title}</p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {sourceTypes.find((t) => t.value === s.type)?.label ??
+                      s.type}
+                    {s.url ? ` · ${s.url}` : ""}
+                  </p>
+                  {s.notes ? (
+                    <p className="mt-1 text-xs text-[var(--muted)]">{s.notes}</p>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingSourceId(s.id);
+                        setSEditTitle(s.title);
+                        setSEditType(s.type);
+                        setSEditUrl(s.url ?? "");
+                        setSEditNotes(s.notes ?? "");
+                      }}
+                    >
+                      Изменить
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => {
+                        if (window.confirm("Удалить этот источник роста?")) {
+                          removeGrowthSource(s.id);
+                          if (editingSourceId === s.id) {
+                            setEditingSourceId(null);
+                          }
+                        }
+                      }}
+                    >
+                      Удалить
+                    </Button>
+                  </div>
+                </>
+              )}
             </li>
           ))}
         </ul>

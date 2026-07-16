@@ -10,7 +10,7 @@ import {
   getPractices,
   stageProgress,
 } from "@/lib/selectors";
-import type { CheckIn, Practice } from "@/lib/types";
+import type { AppData, CheckIn, Practice } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
 import { PathMap } from "./PathMap";
 import { ProgressHud } from "./ProgressHud";
@@ -23,6 +23,20 @@ import {
   ProgressBar,
   Section,
 } from "./ui";
+
+/** Open practices first; done sinks so remaining work stays visible. */
+function sortPracticesForToday(
+  practices: Practice[],
+  data: AppData,
+): Practice[] {
+  const rank = (p: Practice) => {
+    const status = getCheckInForPracticePeriod(data, p)?.status;
+    if (status === "done") return 2;
+    if (status === "skipped") return 1;
+    return 0;
+  };
+  return [...practices].sort((a, b) => rank(a) - rank(b));
+}
 
 function PracticeCard({
   practice,
@@ -139,8 +153,14 @@ export function TodayView() {
 
   const stage = getActiveStage(data, dream.id);
   const practices = stage ? getPractices(data, stage.id) : [];
-  const daily = practices.filter((p) => p.frequency === "daily");
-  const weekly = practices.filter((p) => p.frequency === "weekly");
+  const daily = sortPracticesForToday(
+    practices.filter((p) => p.frequency === "daily"),
+    data,
+  );
+  const weekly = sortPracticesForToday(
+    practices.filter((p) => p.frequency === "weekly"),
+    data,
+  );
   const progress = stage ? stageProgress(data, stage.id) : null;
   const weekLabel = formatWeekLabel(weekStartISO());
 
