@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { STAGE_TEMPLATES } from "@/lib/stageTemplates";
 import type { Stage } from "@/lib/types";
 import { useFlashMessage } from "@/lib/useFlashMessage";
 import { useApp } from "@/store/AppProvider";
@@ -95,6 +96,35 @@ export function StagesEditor({ dreamId, stages }: Props) {
             <strong>как поймёшь, что вырос</strong> (критерии выхода).
           </p>
         </Hint>
+
+        <div className="mb-4 space-y-2">
+          <p className="text-sm font-medium text-[var(--ink)]">
+            Старт из шаблона
+          </p>
+          <p className="text-xs text-[var(--muted)]">
+            Подставит черновик этапов — правь тексты под свою мечту, потом
+            сохрани.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {STAGE_TEMPLATES.map((tpl) => (
+              <Button
+                key={tpl.id}
+                type="button"
+                variant="ghost"
+                title={tpl.blurb}
+                onClick={() => {
+                  setStageDrafts(tpl.stages.map((s) => ({ ...s })));
+                  setActiveIndex(0);
+                  createFlash.flash(`Шаблон «${tpl.label}» подставлен — можно править`);
+                }}
+              >
+                {tpl.label}
+              </Button>
+            ))}
+          </div>
+          <SaveNotice message={createFlash.message} />
+        </div>
+
         <form
           onSubmit={onCreateAll}
           className="space-y-4 rounded-md border border-[var(--line)] bg-[var(--panel)] p-4"
