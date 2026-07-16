@@ -41,9 +41,12 @@ import {
   EMPTY_DATA,
   type AppData,
   type CheckInStatus,
+  type CourseCheck,
   type GrowthSourceType,
+  type LearningWindowStatus,
   type PracticeFrequency,
   type Reminders,
+  type WeekLessonTouch,
 } from "@/lib/types";
 
 type AppContextValue = {
@@ -127,6 +130,7 @@ type AppContextValue = {
       cue?: string;
       focus?: string;
       whyForStage?: string;
+      courseCheck?: CourseCheck;
       tags?: string;
       minMinutes?: string;
     },
@@ -139,6 +143,7 @@ type AppContextValue = {
       cue?: string;
       focus?: string;
       whyForStage?: string;
+      courseCheck?: CourseCheck;
       tags?: string;
       minMinutes?: string;
     },
@@ -236,6 +241,9 @@ type AppContextValue = {
     blocked: string;
     nextChange: string;
     learningUsed?: string;
+    learningWindows?: LearningWindowStatus;
+    weekLessonTouch?: WeekLessonTouch;
+    weekLessonSnapshot?: string;
   }) => void;
 };
 
@@ -717,6 +725,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               cue: input.cue?.trim() || undefined,
               focus: input.focus?.trim() || undefined,
               whyForStage: input.whyForStage?.trim() || undefined,
+              courseCheck: input.courseCheck,
               tags: tags.length ? tags : undefined,
               minMinutes,
               status: "active",
@@ -745,6 +754,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                   cue: input.cue?.trim() || undefined,
                   focus: input.focus?.trim() || undefined,
                   whyForStage: input.whyForStage?.trim() || undefined,
+                  courseCheck: input.courseCheck,
                   tags: tags.length ? tags : undefined,
                   minMinutes,
                 }
@@ -1415,6 +1425,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           blocked: input.blocked.trim(),
           nextChange: input.nextChange.trim(),
           learningUsed: input.learningUsed?.trim() || undefined,
+          learningWindows: input.learningWindows,
+          weekLessonTouch: input.weekLessonTouch,
+          weekLessonSnapshot: input.weekLessonSnapshot?.trim() || undefined,
           statsSnapshot: { checkInsDone, milestonesDone },
           createdAt: nowISO(),
         };

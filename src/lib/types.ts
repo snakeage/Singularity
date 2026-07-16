@@ -3,6 +3,8 @@ export type StageStatus = "planned" | "active" | "completed";
 export type MilestoneStatus = "open" | "done";
 export type PracticeStatus = "active" | "paused" | "retired";
 export type PracticeFrequency = "daily" | "weekly";
+/** Keeps practices from drifting into side quests (Zemlyanin course filter). */
+export type CourseCheck = "on_course" | "unsure" | "side_quest";
 /** Effort level for a practice period — not just binary done/skip. */
 export type CheckInStatus = "skipped" | "partial" | "done" | "strong";
 export type GrowthSourceType =
@@ -66,6 +68,8 @@ export type Practice = {
   cue?: string;
   focus?: string;
   whyForStage?: string;
+  /** Explicit course filter answer when the practice was added/edited. */
+  courseCheck?: CourseCheck;
   /** Short labels for filter/search, e.g. "сила", "учёба" */
   tags?: string[];
   /** Minimum focused minutes for a done mark (optional). */
@@ -132,6 +136,11 @@ export type ImplementationIntention = {
   obstacleId?: string;
 };
 
+/** Weekly review: free time appeared → used for learning under the stage? */
+export type LearningWindowStatus = "none" | "missed" | "used";
+/** Did you move the teacher's week lesson this week? */
+export type WeekLessonTouch = "no_lesson" | "missed" | "touched" | "done";
+
 export type Review = {
   id: string;
   dreamId: string;
@@ -139,7 +148,14 @@ export type Review = {
   worked: string;
   blocked: string;
   nextChange: string;
+  /** Free-text: what the learning windows went into. */
   learningUsed?: string;
+  /** Structured answer for the Zemlyanin "learn in windows" rule. */
+  learningWindows?: LearningWindowStatus;
+  /** Progress on the primary teacher's week lesson. */
+  weekLessonTouch?: WeekLessonTouch;
+  /** Snapshot of the week lesson at review save (for history). */
+  weekLessonSnapshot?: string;
   statsSnapshot?: {
     checkInsDone: number;
     milestonesDone: number;

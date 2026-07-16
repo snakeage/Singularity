@@ -13,11 +13,20 @@ import {
   stageProgress,
 } from "@/lib/selectors";
 import {
+  COURSE_CHECK_HINT,
+  COURSE_CHECK_LABEL,
+  courseCheckTone,
+} from "@/lib/courseCheck";
+import {
   collectPracticeTags,
   formatTags,
   practiceMatchesQuery,
 } from "@/lib/tags";
-import type { GrowthSourceType, PracticeFrequency } from "@/lib/types";
+import type {
+  CourseCheck,
+  GrowthSourceType,
+  PracticeFrequency,
+} from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
 import {
   Badge,
@@ -33,6 +42,8 @@ import {
   Select,
   Textarea,
 } from "./ui";
+
+const COURSE_OPTIONS: CourseCheck[] = ["on_course", "unsure", "side_quest"];
 
 const sourceTypes: { value: GrowthSourceType; label: string }[] = [
   { value: "mentor", label: "Ментор / наставник" },
@@ -75,6 +86,7 @@ export function StageView() {
   const [pFreq, setPFreq] = useState<PracticeFrequency>("daily");
   const [pCue, setPCue] = useState("");
   const [pWhy, setPWhy] = useState("");
+  const [pCourseCheck, setPCourseCheck] = useState<CourseCheck | "">("");
   const [pFocus, setPFocus] = useState("");
   const [pTags, setPTags] = useState("");
   const [pMinMinutes, setPMinMinutes] = useState("");
@@ -87,6 +99,9 @@ export function StageView() {
   const [pEditFreq, setPEditFreq] = useState<PracticeFrequency>("daily");
   const [pEditCue, setPEditCue] = useState("");
   const [pEditWhy, setPEditWhy] = useState("");
+  const [pEditCourseCheck, setPEditCourseCheck] = useState<CourseCheck | "">(
+    "",
+  );
   const [pEditFocus, setPEditFocus] = useState("");
   const [pEditTags, setPEditTags] = useState("");
   const [pEditMinMinutes, setPEditMinMinutes] = useState("");
@@ -169,12 +184,27 @@ export function StageView() {
 
   function onAddPractice(e: FormEvent) {
     e.preventDefault();
-    if (!pTitle.trim()) return;
+    if (!pTitle.trim() || !pCourseCheck) return;
+    if (!pWhy.trim()) {
+      window.alert(
+        "Напиши, как практика двигает этап — иначе легко уйти в боковой квест.",
+      );
+      return;
+    }
+    if (
+      pCourseCheck === "side_quest" &&
+      !window.confirm(
+        "Это боковой квест: осознанное отклонение от лестницы. Всё равно добавить?",
+      )
+    ) {
+      return;
+    }
     addPractice(stage!.id, {
       title: pTitle,
       frequency: pFreq,
       cue: pCue,
       whyForStage: pWhy,
+      courseCheck: pCourseCheck,
       focus: pFocus,
       tags: pTags,
       minMinutes: pMinMinutes,
@@ -182,6 +212,7 @@ export function StageView() {
     setPTitle("");
     setPCue("");
     setPWhy("");
+    setPCourseCheck("");
     setPFocus("");
     setPTags("");
     setPMinMinutes("");
@@ -516,10 +547,34 @@ export function StageView() {
                       onChange={(e) => setPEditCue(e.target.value)}
                     />
                   </Field>
+                  <Field label="Это к этапу или боковой квест?">
+                    <div className="flex flex-wrap gap-3 text-sm text-[var(--ink)]">
+                      {COURSE_OPTIONS.map((option) => (
+                        <label
+                          key={option}
+                          className="flex cursor-pointer items-center gap-2"
+                        >
+                          <input
+                            type="radio"
+                            name={`course-edit-${p.id}`}
+                            checked={pEditCourseCheck === option}
+                            onChange={() => setPEditCourseCheck(option)}
+                          />
+                          {COURSE_CHECK_LABEL[option]}
+                        </label>
+                      ))}
+                    </div>
+                    {pEditCourseCheck ? (
+                      <FieldHint>{COURSE_CHECK_HINT[pEditCourseCheck]}</FieldHint>
+                    ) : (
+                      <FieldHint>Выбери один вариант — фильтр курса.</FieldHint>
+                    )}
+                  </Field>
                   <Field label="Как это двигает этап?">
                     <Textarea
                       value={pEditWhy}
                       onChange={(e) => setPEditWhy(e.target.value)}
+                      required
                     />
                   </Field>
                   <Field label="Фокус">
@@ -549,12 +604,27 @@ export function StageView() {
                     <Button
                       type="button"
                       onClick={() => {
-                        if (!pEditTitle.trim()) return;
+                        if (!pEditTitle.trim() || !pEditCourseCheck) return;
+                        if (!pEditWhy.trim()) {
+                          window.alert(
+                            "Напиши, как практика двигает этап — иначе легко уйти в боковой квест.",
+                          );
+                          return;
+                        }
+                        if (
+                          pEditCourseCheck === "side_quest" &&
+                          !window.confirm(
+                            "Это боковой квест: осознанное отклонение от лестницы. Всё равно сохранить?",
+                          )
+                        ) {
+                          return;
+                        }
                         updatePractice(p.id, {
                           title: pEditTitle,
                           frequency: pEditFreq,
                           cue: pEditCue,
                           whyForStage: pEditWhy,
+                          courseCheck: pEditCourseCheck,
                           focus: pEditFocus,
                           tags: pEditTags,
                           minMinutes: pEditMinMinutes,
@@ -577,6 +647,11 @@ export function StageView() {
                 <>
                   <div className="mb-1 flex flex-wrap items-center gap-2">
                     <Badge tone="metal">Практика</Badge>
+                    {p.courseCheck ? (
+                      <Badge tone={courseCheckTone(p.courseCheck)}>
+                        {COURSE_CHECK_LABEL[p.courseCheck]}
+                      </Badge>
+                    ) : null}
                     <span className="text-xs text-[var(--faint)]">
                       {p.frequency === "daily"
                         ? "каждый день"
@@ -614,6 +689,7 @@ export function StageView() {
                         setPEditFreq(p.frequency);
                         setPEditCue(p.cue ?? "");
                         setPEditWhy(p.whyForStage ?? "");
+                        setPEditCourseCheck(p.courseCheck ?? "");
                         setPEditFocus(p.focus ?? "");
                         setPEditTags(formatTags(p.tags));
                         setPEditMinMinutes(
@@ -680,11 +756,39 @@ export function StageView() {
               Привязка к месту/времени помогает не забывать (Atomic Habits).
             </FieldHint>
           </Field>
-          <Field label="Как это двигает этап? (фильтр курса)">
+          <Field label="Это к этапу или боковой квест?">
+            <div className="flex flex-wrap gap-3 text-sm text-[var(--ink)]">
+              {COURSE_OPTIONS.map((option) => (
+                <label
+                  key={option}
+                  className="flex cursor-pointer items-center gap-2"
+                >
+                  <input
+                    type="radio"
+                    name="course-add"
+                    checked={pCourseCheck === option}
+                    onChange={() => setPCourseCheck(option)}
+                    required
+                  />
+                  {COURSE_CHECK_LABEL[option]}
+                </label>
+              ))}
+            </div>
+            {pCourseCheck ? (
+              <FieldHint>{COURSE_CHECK_HINT[pCourseCheck]}</FieldHint>
+            ) : (
+              <FieldHint>
+                Фильтр курса из канона: не тащи на лестницу то, что её не
+                двигает.
+              </FieldHint>
+            )}
+          </Field>
+          <Field label="Как это двигает этап?">
             <Textarea
               value={pWhy}
               onChange={(e) => setPWhy(e.target.value)}
               placeholder="Если не можешь ответить — возможно, это отклонение"
+              required
             />
           </Field>
           <Field label="Фокус практики">

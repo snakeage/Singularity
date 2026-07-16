@@ -4,26 +4,48 @@ import Link from "next/link";
 import { useEffect, useState, type FormEvent } from "react";
 import { weekStartISO } from "@/lib/dates";
 import { XP_HINTS } from "@/lib/gamification";
+import {
+  LEARNING_WINDOW_HINT,
+  LEARNING_WINDOW_LABEL,
+  learningWindowTone,
+  WEEK_LESSON_TOUCH_LABEL,
+  weekLessonTouchTone,
+} from "@/lib/learningWindows";
 import { LEVEL_LABEL, levelTone } from "@/lib/practiceLevels";
-import { getFocusDream, getWeekReviewStats } from "@/lib/selectors";
+import {
+  getActiveStage,
+  getFocusDream,
+  getPrimaryTeacher,
+  getWeekReviewStats,
+} from "@/lib/selectors";
+import type { LearningWindowStatus, WeekLessonTouch } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
 import {
   Badge,
   Button,
   EmptyState,
   Field,
+  FieldHint,
   Hint,
   ProgressBar,
   Section,
   Textarea,
 } from "./ui";
 
+const WINDOW_OPTIONS: LearningWindowStatus[] = ["none", "missed", "used"];
+
 export function ReviewView() {
   const { ready, data, saveReview } = useApp();
   const [worked, setWorked] = useState("");
   const [blocked, setBlocked] = useState("");
   const [nextChange, setNextChange] = useState("");
+  const [learningWindows, setLearningWindows] = useState<
+    LearningWindowStatus | ""
+  >("");
   const [learningUsed, setLearningUsed] = useState("");
+  const [weekLessonTouch, setWeekLessonTouch] = useState<WeekLessonTouch | "">(
+    "",
+  );
   const [hydrated, setHydrated] = useState(false);
 
   const dream = ready ? getFocusDream(data) : undefined;
@@ -34,6 +56,15 @@ export function ReviewView() {
       )
     : undefined;
   const stats = dream ? getWeekReviewStats(data, dream.id) : null;
+  const activeStage = dream ? getActiveStage(data, dream.id) : undefined;
+  const teacher = activeStage
+    ? getPrimaryTeacher(data, activeStage.id)
+    : undefined;
+  const weekLesson = teacher?.weekLesson?.trim() || "";
+
+  const lessonTouchOptions: WeekLessonTouch[] = weekLesson
+    ? ["missed", "touched", "done"]
+    : ["no_lesson"];
 
   useEffect(() => {
     if (!current || hydrated) return;
@@ -41,8 +72,19 @@ export function ReviewView() {
     setBlocked(current.blocked);
     setNextChange(current.nextChange);
     setLearningUsed(current.learningUsed ?? "");
+    setLearningWindows(current.learningWindows ?? "");
+    setWeekLessonTouch(
+      current.weekLessonTouch ?? (weekLesson ? "" : "no_lesson"),
+    );
     setHydrated(true);
-  }, [current, hydrated]);
+  }, [current, hydrated, weekLesson]);
+
+  useEffect(() => {
+    if (hydrated) return;
+    if (!weekLesson && !weekLessonTouch) {
+      setWeekLessonTouch("no_lesson");
+    }
+  }, [weekLesson, weekLessonTouch, hydrated]);
 
   if (!ready) {
     return <p className="text-sm text-[var(--muted)]">Загрузка…</p>;
@@ -73,12 +115,35 @@ export function ReviewView() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault();
+    if (!learningWindows) {
+      window.alert("Отметь окна обучения — это часть курса из канона.");
+      return;
+    }
+    if (weekLesson && !weekLessonTouch) {
+      window.alert("Как прошёл урок недели наставника?");
+      return;
+    }
+    if (
+      learningWindows === "used" &&
+      !learningUsed.trim() &&
+      !window.confirm(
+        "Окна были и вложены, но без заметки. Сохранить без подробностей?",
+      )
+    ) {
+      return;
+    }
+    const touch: WeekLessonTouch | undefined = weekLesson
+      ? weekLessonTouch || undefined
+      : weekLessonTouch || "no_lesson";
     saveReview({
       dreamId: dream!.id,
       worked,
       blocked,
       nextChange,
       learningUsed,
+      learningWindows,
+      weekLessonTouch: touch,
+      weekLessonSnapshot: weekLesson || undefined,
     });
   }
 
@@ -196,15 +261,70 @@ export function ReviewView() {
               </ul>
             </div>
           ) : null}
+
+          {current?.learningWindows ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-4 py-3 text-sm">
+              <span className="text-[var(--muted)]">Окна обучения:</span>
+              <Badge tone={learningWindowTone(current.learningWindows)}>
+                {LEARNING_WINDOW_LABEL[current.learningWindows]}
+              </Badge>
+              {current.weekLessonTouch ? (
+                <Badge tone={weekLessonTouchTone(current.weekLessonTouch)}>
+                  {WEEK_LESSON_TOUCH_LABEL[current.weekLessonTouch]}
+                </Badge>
+              ) : null}
+            </div>
+          ) : null}
         </Section>
       ) : null}
 
       <Hint title="Зачем обзор">
         <p>
           Раз в неделю сверяешь курс: двигался к мечте или отклонился? Были ли
-          окна на обучение? Сохранение даёт {XP_HINTS.review}.
+          окна на обучение — и ушли ли они в урок недели? Сохранение даёт{" "}
+          {XP_HINTS.review}.
         </p>
       </Hint>
+
+      <Section
+        title="Урок недели"
+        hint="Контекст от наставника этапа — на что смотреть, когда появляется окно."
+      >
+        {teacher ? (
+          <div className="rounded-md border border-[var(--metal)]/35 bg-[var(--wash-2)]/30 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--metal)]">
+                Наставник
+              </p>
+              <Badge tone="metal">{teacher.title}</Badge>
+            </div>
+            {weekLesson ? (
+              <p className="mt-2 text-sm text-[var(--ink)]">{weekLesson}</p>
+            ) : (
+              <p className="mt-2 text-sm text-[var(--muted)]">
+                Урок недели ещё не задан. На Этапе разбей эпик наставника на
+                узкий кусок — иначе окна легко уйдут «просто в учёбу».
+              </p>
+            )}
+            <Link href="/stage" className="mt-2 inline-block">
+              <Button type="button" variant="ghost">
+                {weekLesson ? "Изменить урок" : "Задать урок недели"}
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div className="rounded-md border border-dashed border-[var(--metal)]/40 bg-[var(--wash-2)]/25 px-4 py-3">
+            <p className="text-sm text-[var(--muted)]">
+              Нет главного учителя на этапе — окна обучения сложнее нацелить.
+            </p>
+            <Link href="/stage" className="mt-2 inline-block">
+              <Button type="button" variant="ghost">
+                Назначить учителя
+              </Button>
+            </Link>
+          </div>
+        )}
+      </Section>
 
       <Section title="Итоги недели">
         <form
@@ -225,13 +345,87 @@ export function ReviewView() {
               required
             />
           </Field>
-          <Field label="Окна обучения — использованы?">
-            <Textarea
-              value={learningUsed}
-              onChange={(e) => setLearningUsed(e.target.value)}
-              placeholder="Было ли свободное время на учёбу под этап?"
-            />
+
+          <Field label="Окна обучения">
+            <div className="flex flex-col gap-2 text-sm text-[var(--ink)]">
+              {WINDOW_OPTIONS.map((option) => (
+                <label
+                  key={option}
+                  className="flex cursor-pointer items-start gap-2"
+                >
+                  <input
+                    type="radio"
+                    name="learning-windows"
+                    className="mt-1"
+                    checked={learningWindows === option}
+                    onChange={() => setLearningWindows(option)}
+                    required
+                  />
+                  <span>
+                    <span className="font-medium">
+                      {LEARNING_WINDOW_LABEL[option]}
+                    </span>
+                    <span className="mt-0.5 block text-xs text-[var(--muted)]">
+                      {LEARNING_WINDOW_HINT[option]}
+                    </span>
+                  </span>
+                </label>
+              ))}
+            </div>
           </Field>
+
+          {learningWindows === "used" || learningWindows === "missed" ? (
+            <Field
+              label={
+                learningWindows === "used"
+                  ? "Во что вложил окна"
+                  : "Куда ушло время вместо учёбы"
+              }
+            >
+              <Textarea
+                value={learningUsed}
+                onChange={(e) => setLearningUsed(e.target.value)}
+                placeholder={
+                  weekLesson
+                    ? `Например: кусок урока «${weekLesson.slice(0, 80)}${
+                        weekLesson.length > 80 ? "…" : ""
+                      }»`
+                    : "Книга, курс, ментор, ИИ под этап…"
+                }
+              />
+              <FieldHint>
+                Канон: появилось время → в учёбу под этап, не в пустое ожидание.
+              </FieldHint>
+            </Field>
+          ) : null}
+
+          {weekLesson ? (
+            <Field label="Урок недели наставника">
+              <div className="flex flex-col gap-2 text-sm text-[var(--ink)]">
+                {lessonTouchOptions.map((option) => (
+                  <label
+                    key={option}
+                    className="flex cursor-pointer items-center gap-2"
+                  >
+                    <input
+                      type="radio"
+                      name="week-lesson-touch"
+                      checked={weekLessonTouch === option}
+                      onChange={() => setWeekLessonTouch(option)}
+                      required
+                    />
+                    {WEEK_LESSON_TOUCH_LABEL[option]}
+                  </label>
+                ))}
+              </div>
+            </Field>
+          ) : (
+            <FieldHint>
+              Урок недели не задан — в обзоре зафиксируем «урока не было». Задай
+              узкий кусок на Этапе, чтобы окна целились точнее.
+            </FieldHint>
+          )}
+
           <Field label="Что меняем на следующей неделе">
             <Textarea
               value={nextChange}
@@ -263,14 +457,29 @@ export function ReviewView() {
                       {r.statsSnapshot.milestonesDone}
                     </span>
                   ) : null}
+                  {r.learningWindows ? (
+                    <Badge tone={learningWindowTone(r.learningWindows)}>
+                      {LEARNING_WINDOW_LABEL[r.learningWindows]}
+                    </Badge>
+                  ) : null}
+                  {r.weekLessonTouch ? (
+                    <Badge tone={weekLessonTouchTone(r.weekLessonTouch)}>
+                      {WEEK_LESSON_TOUCH_LABEL[r.weekLessonTouch]}
+                    </Badge>
+                  ) : null}
                 </div>
                 <p className="mt-1 text-[var(--muted)]">
                   Сработало: {r.worked}
                 </p>
                 <p className="text-[var(--muted)]">Мешало: {r.blocked}</p>
+                {r.weekLessonSnapshot ? (
+                  <p className="text-[var(--muted)]">
+                    Урок недели: {r.weekLessonSnapshot}
+                  </p>
+                ) : null}
                 {r.learningUsed ? (
                   <p className="text-[var(--muted)]">
-                    Обучение: {r.learningUsed}
+                    Окна: {r.learningUsed}
                   </p>
                 ) : null}
                 <p className="text-[var(--muted)]">Меняем: {r.nextChange}</p>

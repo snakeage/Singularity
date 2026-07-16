@@ -171,7 +171,10 @@ erDiagram
 | worked | string | Что сработало |
 | blocked | string | Что мешало |
 | nextChange | string | Что меняем |
-| learningUsed | string? | Были ли окна на обучение и как их использовал |
+| learningUsed | string? | Заметка: во что ушли окна (или куда ушло время) |
+| learningWindows | enum? | `none` \| `missed` \| `used` — структурированный ответ про окна |
+| weekLessonTouch | enum? | `no_lesson` \| `missed` \| `touched` \| `done` — прогресс по уроку недели |
+| weekLessonSnapshot | string? | Снимок урока наставника на момент обзора |
 | statsSnapshot | object? | Число check-ins, закрытых milestone и т.п. |
 | createdAt | datetime | |
 

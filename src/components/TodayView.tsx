@@ -1,6 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import {
+  COURSE_CHECK_LABEL,
+  courseCheckTone,
+} from "@/lib/courseCheck";
 import { formatWeekLabel, weekStartISO } from "@/lib/dates";
 import { XP_HINTS } from "@/lib/gamification";
 import {
@@ -83,6 +87,11 @@ function PracticeCard({
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge tone="metal">Практика</Badge>
         <Badge>{isWeekly ? "на неделю" : "на сегодня"}</Badge>
+        {practice.courseCheck && practice.courseCheck !== "on_course" ? (
+          <Badge tone={courseCheckTone(practice.courseCheck)}>
+            {COURSE_CHECK_LABEL[practice.courseCheck]}
+          </Badge>
+        ) : null}
         {checkIn ? (
           <Badge tone={levelTone(checkIn.status)}>
             {LEVEL_LABEL[checkIn.status]}
