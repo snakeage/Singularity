@@ -42,7 +42,11 @@ export function StageView() {
     data,
     addMilestone,
     toggleMilestone,
+    updateMilestone,
+    removeMilestone,
     addPractice,
+    updatePractice,
+    removePractice,
     addGrowthSource,
     completeStage,
   } = useApp();
@@ -50,12 +54,26 @@ export function StageView() {
   const [msTitle, setMsTitle] = useState("");
   const [msMetric, setMsMetric] = useState("");
   const [msDue, setMsDue] = useState("");
+  const [editingMilestoneId, setEditingMilestoneId] = useState<string | null>(
+    null,
+  );
+  const [msEditTitle, setMsEditTitle] = useState("");
+  const [msEditMetric, setMsEditMetric] = useState("");
+  const [msEditDue, setMsEditDue] = useState("");
 
   const [pTitle, setPTitle] = useState("");
   const [pFreq, setPFreq] = useState<PracticeFrequency>("daily");
   const [pCue, setPCue] = useState("");
   const [pWhy, setPWhy] = useState("");
   const [pFocus, setPFocus] = useState("");
+  const [editingPracticeId, setEditingPracticeId] = useState<string | null>(
+    null,
+  );
+  const [pEditTitle, setPEditTitle] = useState("");
+  const [pEditFreq, setPEditFreq] = useState<PracticeFrequency>("daily");
+  const [pEditCue, setPEditCue] = useState("");
+  const [pEditWhy, setPEditWhy] = useState("");
+  const [pEditFocus, setPEditFocus] = useState("");
 
   const [sTitle, setSTitle] = useState("");
   const [sType, setSType] = useState<GrowthSourceType>("ai");
@@ -218,27 +236,105 @@ export function StageView() {
           {milestones.map((m) => (
             <li
               key={m.id}
-              className="flex items-start justify-between gap-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
+              className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
             >
-              <div>
-                <p
-                  className={`font-medium ${
-                    m.status === "done"
-                      ? "text-[var(--muted)] line-through"
-                      : "text-[var(--ink)]"
-                  }`}
-                >
-                  {m.title}
-                </p>
-                <p className="text-xs text-[var(--muted)]">{m.successMetric}</p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => toggleMilestone(m.id)}
-              >
-                {m.status === "done" ? "Открыть" : `Готово · ${XP_HINTS.milestone}`}
-              </Button>
+              {editingMilestoneId === m.id ? (
+                <div className="space-y-2">
+                  <Field label="Рубеж">
+                    <Input
+                      value={msEditTitle}
+                      onChange={(e) => setMsEditTitle(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Как поймёшь, что готово">
+                    <Input
+                      value={msEditMetric}
+                      onChange={(e) => setMsEditMetric(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Срок">
+                    <Input
+                      type="date"
+                      value={msEditDue}
+                      onChange={(e) => setMsEditDue(e.target.value)}
+                    />
+                  </Field>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!msEditTitle.trim() || !msEditMetric.trim()) return;
+                        updateMilestone(m.id, {
+                          title: msEditTitle,
+                          successMetric: msEditMetric,
+                          dueAt: msEditDue || undefined,
+                        });
+                        setEditingMilestoneId(null);
+                      }}
+                    >
+                      Сохранить
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setEditingMilestoneId(null)}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p
+                      className={`font-medium ${
+                        m.status === "done"
+                          ? "text-[var(--muted)] line-through"
+                          : "text-[var(--ink)]"
+                      }`}
+                    >
+                      {m.title}
+                    </p>
+                    <p className="text-xs text-[var(--muted)]">
+                      {m.successMetric}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => toggleMilestone(m.id)}
+                    >
+                      {m.status === "done"
+                        ? "Открыть"
+                        : `Готово · ${XP_HINTS.milestone}`}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingMilestoneId(m.id);
+                        setMsEditTitle(m.title);
+                        setMsEditMetric(m.successMetric);
+                        setMsEditDue(m.dueAt?.slice(0, 10) ?? "");
+                      }}
+                    >
+                      Изменить
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => {
+                        if (window.confirm("Удалить этот рубеж?")) {
+                          removeMilestone(m.id);
+                        }
+                      }}
+                    >
+                      Удалить
+                    </Button>
+                  </div>
+                </div>
+              )}
             </li>
           ))}
         </ul>
@@ -293,18 +389,118 @@ export function StageView() {
         <ul className="mb-3 space-y-2 text-sm">
           {practices.map((p) => (
             <li key={p.id} className="practice-card rounded-md p-3">
-              <div className="mb-1 flex items-center gap-2">
-                <Badge tone="metal">Практика</Badge>
-                <span className="text-xs text-[var(--faint)]">
-                  {p.frequency === "daily" ? "каждый день" : "каждую неделю"}
-                </span>
-              </div>
-              <p className="font-medium text-[var(--ink)]">{p.title}</p>
-              {p.whyForStage ? (
-                <p className="text-xs text-[var(--muted)]">
-                  Зачем этапу: {p.whyForStage}
-                </p>
-              ) : null}
+              {editingPracticeId === p.id ? (
+                <div className="space-y-2">
+                  <Field label="Практика">
+                    <Input
+                      value={pEditTitle}
+                      onChange={(e) => setPEditTitle(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Частота">
+                    <Select
+                      value={pEditFreq}
+                      onChange={(e) =>
+                        setPEditFreq(e.target.value as PracticeFrequency)
+                      }
+                    >
+                      <option value="daily">Ежедневно</option>
+                      <option value="weekly">Еженедельно</option>
+                    </Select>
+                  </Field>
+                  <Field label="Когда / где">
+                    <Input
+                      value={pEditCue}
+                      onChange={(e) => setPEditCue(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Как это двигает этап?">
+                    <Textarea
+                      value={pEditWhy}
+                      onChange={(e) => setPEditWhy(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Фокус">
+                    <Input
+                      value={pEditFocus}
+                      onChange={(e) => setPEditFocus(e.target.value)}
+                    />
+                  </Field>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!pEditTitle.trim()) return;
+                        updatePractice(p.id, {
+                          title: pEditTitle,
+                          frequency: pEditFreq,
+                          cue: pEditCue,
+                          whyForStage: pEditWhy,
+                          focus: pEditFocus,
+                        });
+                        setEditingPracticeId(null);
+                      }}
+                    >
+                      Сохранить
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setEditingPracticeId(null)}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-1 flex items-center gap-2">
+                    <Badge tone="metal">Практика</Badge>
+                    <span className="text-xs text-[var(--faint)]">
+                      {p.frequency === "daily"
+                        ? "каждый день"
+                        : "каждую неделю"}
+                    </span>
+                  </div>
+                  <p className="font-medium text-[var(--ink)]">{p.title}</p>
+                  {p.whyForStage ? (
+                    <p className="text-xs text-[var(--muted)]">
+                      Зачем этапу: {p.whyForStage}
+                    </p>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingPracticeId(p.id);
+                        setPEditTitle(p.title);
+                        setPEditFreq(p.frequency);
+                        setPEditCue(p.cue ?? "");
+                        setPEditWhy(p.whyForStage ?? "");
+                        setPEditFocus(p.focus ?? "");
+                      }}
+                    >
+                      Изменить
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            "Удалить практику и её отметки за дни?",
+                          )
+                        ) {
+                          removePractice(p.id);
+                        }
+                      }}
+                    >
+                      Удалить
+                    </Button>
+                  </div>
+                </>
+              )}
             </li>
           ))}
         </ul>

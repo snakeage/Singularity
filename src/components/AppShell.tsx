@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
+import { OnboardingHost } from "./Onboarding";
 import { ProgressHud } from "./ProgressHud";
 
 const nav = [
@@ -64,6 +65,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-6">
         {children}
       </main>
+      <OnboardingHost />
     </div>
   );
 }

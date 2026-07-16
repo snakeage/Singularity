@@ -28,6 +28,9 @@ export function parseBackup(raw: string): AppData {
     return {
       ...EMPTY_DATA,
       ...parsed.data,
+      profile: {
+        name: parsed.data.profile?.name?.trim() ?? "",
+      },
       version: 1,
     };
   }
@@ -39,9 +42,13 @@ export function parseBackup(raw: string): AppData {
     parsed.version === 1 &&
     Array.isArray((parsed as AppData).dreams)
   ) {
+    const data = parsed as AppData;
     return {
       ...EMPTY_DATA,
-      ...(parsed as AppData),
+      ...data,
+      profile: {
+        name: data.profile?.name?.trim() ?? "",
+      },
       version: 1,
     };
   }

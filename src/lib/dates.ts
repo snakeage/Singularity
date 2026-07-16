@@ -19,6 +19,27 @@ export function weekStartISO(date = new Date()): string {
   return toISODate(d);
 }
 
+/** Sunday of the week containing `date` (local). */
+export function weekEndISO(date = new Date()): string {
+  const start = weekStartISO(date);
+  const d = parseISODate(start);
+  d.setDate(d.getDate() + 6);
+  return toISODate(d);
+}
+
+export function parseISODate(iso: string): Date {
+  const [y, m, day] = iso.split("-").map(Number);
+  return new Date(y, m - 1, day);
+}
+
+export function formatWeekLabel(weekStart: string): string {
+  const start = parseISODate(weekStart);
+  const end = parseISODate(weekEndISO(start));
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("ru-RU", { day: "numeric", month: "short" });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
 export function nowISO(): string {
   return new Date().toISOString();
 }

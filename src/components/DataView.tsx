@@ -1,17 +1,33 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { resetOnboarding } from "@/lib/onboarding";
 import { useApp } from "@/store/AppProvider";
-import { Button, Section } from "./ui";
+import { Badge, Button, Field, FieldHint, Input, Section } from "./ui";
 
 export function DataView() {
-  const { ready, data, exportBackup, importBackupFile } = useApp();
+  const { ready, data, exportBackup, importBackupFile, updateProfile } =
+    useApp();
   const inputRef = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [name, setName] = useState("");
+
+  useEffect(() => {
+    setName(data.profile?.name ?? "");
+  }, [data.profile?.name]);
 
   if (!ready) {
     return <p className="text-sm text-[var(--muted)]">Загрузка…</p>;
+  }
+
+  const nameDirty = name.trim() !== (data.profile?.name ?? "").trim();
+
+  function onSaveName(e: FormEvent) {
+    e.preventDefault();
+    updateProfile(name);
+    setMessage("Имя персонажа сохранено");
+    setError(null);
   }
 
   return (
@@ -24,16 +40,47 @@ export function DataView() {
           Сейв персонажа
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
-          Это бэкап твоих данных в приложении (мечты, этапы, отметки), не кода
-          проекта. Хранится в браузере; JSON — твоя копия на диске.
+          Имя, бэкап прогресса и обучение. Данные живут в браузере.
         </p>
       </div>
+
+      <Section
+        title="Персонаж"
+        hint="Лёгкая прокачка: имя твоё, титул растёт от XP и этапов."
+      >
+        <form
+          onSubmit={onSaveName}
+          className="space-y-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-4"
+        >
+          <Field label="Как тебя зовут на этом пути">
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Например: Ник, Алекс, Путник"
+              maxLength={40}
+            />
+            <FieldHint>
+              Показывается в шапке и блоке прокачки. Без имени будет «Путник».
+            </FieldHint>
+          </Field>
+          <div className="flex flex-wrap items-center gap-3">
+            {nameDirty ? (
+              <Button type="submit">Сохранить имя</Button>
+            ) : data.profile?.name ? (
+              <Badge tone="accent">Имя сохранено</Badge>
+            ) : (
+              <Badge>Имя ещё не задано</Badge>
+            )}
+          </div>
+        </form>
+      </Section>
 
       <Section title="Где сейчас лежат данные">
         <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-4 text-sm text-[var(--muted)]">
           <p>
-            Браузерное хранилище <code className="text-[var(--ink)]">localStorage</code>{" "}
-            на этом компьютере и в этом браузере.
+            Браузерное хранилище{" "}
+            <code className="text-[var(--ink)]">localStorage</code> на этом
+            компьютере и в этом браузере.
           </p>
           <p className="mt-2">
             Мечт: {data.dreams.length}, этапов: {data.stages.length}, отметок:{" "}
@@ -80,7 +127,9 @@ export function DataView() {
               } catch (err) {
                 setMessage(null);
                 setError(
-                  err instanceof Error ? err.message : "Не удалось импортировать",
+                  err instanceof Error
+                    ? err.message
+                    : "Не удалось импортировать",
                 );
               }
             }}
@@ -90,6 +139,19 @@ export function DataView() {
           <p className="text-sm text-[var(--accent)]">{message}</p>
         ) : null}
         {error ? <p className="text-sm text-red-700">{error}</p> : null}
+      </Section>
+
+      <Section title="Обучение" hint="Короткий гид: мечта → этапы → практики.">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            resetOnboarding();
+            window.location.href = "/";
+          }}
+        >
+          Показать обучение снова
+        </Button>
       </Section>
     </div>
   );

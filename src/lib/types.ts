@@ -119,8 +119,13 @@ export type Review = {
   createdAt: string;
 };
 
+export type Profile = {
+  name: string;
+};
+
 export type AppData = {
   version: 1;
+  profile: Profile;
   dreams: Dream[];
   pointAs: PointA[];
   stages: Stage[];
@@ -135,6 +140,7 @@ export type AppData = {
 
 export const EMPTY_DATA: AppData = {
   version: 1,
+  profile: { name: "" },
   dreams: [],
   pointAs: [],
   stages: [],

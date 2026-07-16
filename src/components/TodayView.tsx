@@ -1,15 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { todayISO } from "@/lib/dates";
+import { formatWeekLabel, weekStartISO } from "@/lib/dates";
 import { XP_HINTS } from "@/lib/gamification";
 import {
   getActiveStage,
-  getCheckInForPractice,
+  getCheckInForPracticePeriod,
   getFocusDream,
   getPractices,
   stageProgress,
 } from "@/lib/selectors";
+import type { CheckIn, Practice } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
 import { PathMap } from "./PathMap";
 import { ProgressHud } from "./ProgressHud";
@@ -23,8 +24,100 @@ import {
   Section,
 } from "./ui";
 
+function PracticeCard({
+  practice,
+  dreamTitle,
+  stageTitle,
+  checkIn,
+  onDone,
+  onSkip,
+  onClear,
+}: {
+  practice: Practice;
+  dreamTitle: string;
+  stageTitle: string;
+  checkIn?: CheckIn;
+  onDone: () => void;
+  onSkip: () => void;
+  onClear: () => void;
+}) {
+  const isWeekly = practice.frequency === "weekly";
+
+  return (
+    <li className="practice-card rounded-md p-4">
+      <div className="mb-2 flex flex-wrap items-center gap-2">
+        <Badge tone="metal">Практика</Badge>
+        <Badge>{isWeekly ? "на неделю" : "на сегодня"}</Badge>
+        <span className="text-xs text-[var(--faint)]">
+          внутри этапа «{stageTitle}»
+        </span>
+      </div>
+      <LadderChain
+        dream={dreamTitle}
+        stage={stageTitle}
+        practice={practice.title}
+      />
+      {practice.cue ? (
+        <p className="mt-2 text-xs text-[var(--muted)]">
+          Когда/где: {practice.cue}
+        </p>
+      ) : null}
+      {practice.whyForStage ? (
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          Зачем этапу: {practice.whyForStage}
+        </p>
+      ) : null}
+      {isWeekly ? (
+        <p className="mt-2 text-xs text-[var(--faint)]">
+          Одна отметка на неделю ({formatWeekLabel(weekStartISO())}). Не нужно
+          отмечать каждый день.
+        </p>
+      ) : null}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {checkIn?.status === "done" ? (
+          <>
+            <Button type="button" variant="primary" disabled>
+              {isWeekly ? "Сделано на этой неделе ✓" : "Сделано ✓"} ·{" "}
+              {XP_HINTS.checkIn}
+            </Button>
+            <Button type="button" variant="ghost" onClick={onClear}>
+              Отменить
+            </Button>
+          </>
+        ) : checkIn?.status === "skipped" ? (
+          <>
+            <Button type="button" variant="primary" disabled>
+              {isWeekly ? "Пропущено на этой неделе" : "Пропущено"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={onDone}>
+              Всё же сделано · {XP_HINTS.checkIn}
+            </Button>
+            <Button type="button" variant="ghost" onClick={onClear}>
+              Отменить
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button type="button" variant="primary" onClick={onDone}>
+              Сделано · {XP_HINTS.checkIn}
+            </Button>
+            <Button type="button" variant="ghost" onClick={onSkip}>
+              Пропуск
+            </Button>
+          </>
+        )}
+      </div>
+    </li>
+  );
+}
+
 export function TodayView() {
-  const { ready, data, setCheckIn } = useApp();
+  const {
+    ready,
+    data,
+    setPracticePeriodCheckIn,
+    clearPracticePeriodCheckIn,
+  } = useApp();
   if (!ready) {
     return <p className="text-sm text-[var(--muted)]">Загрузка…</p>;
   }
@@ -46,8 +139,10 @@ export function TodayView() {
 
   const stage = getActiveStage(data, dream.id);
   const practices = stage ? getPractices(data, stage.id) : [];
+  const daily = practices.filter((p) => p.frequency === "daily");
+  const weekly = practices.filter((p) => p.frequency === "weekly");
   const progress = stage ? stageProgress(data, stage.id) : null;
-  const date = todayISO();
+  const weekLabel = formatWeekLabel(weekStartISO());
 
   return (
     <div className="space-y-8">
@@ -81,9 +176,9 @@ export function TodayView() {
       <Hint title="Три уровня — не путай">
         <p>
           <strong>Этап</strong> — большая ступень к мечте.{" "}
-          <strong>Практика</strong> — ежедневное маленькое действие{" "}
-          <em>внутри</em> этапа. <strong>Рубеж</strong> — доказательство, что
-          этап можно закрывать.
+          <strong>Практика</strong> — действие внутри этапа (каждый день или раз
+          в неделю). <strong>Рубеж</strong> — доказательство, что этап можно
+          закрывать.
         </p>
       </Hint>
 
@@ -97,88 +192,104 @@ export function TodayView() {
             </Link>
           }
         />
-      ) : (
-        <Section
-          title="Практики на сегодня"
-          hint={`Ежедневные действия этапа «${stage.title}». Отметка даёт ${XP_HINTS.checkIn}.`}
-        >
-          {practices.length === 0 ? (
-            <div className="space-y-3">
-              <Hint title="С чего начать">
-                <p>
-                  На экране <strong>Этап</strong> добавь 1–3 практики: маленькие
-                  действия под текущую ступень.
-                </p>
-                <p>
-                  Пример: этап «База фронтенда» → практика «45 мин кода после
-                  ужина».
-                </p>
-              </Hint>
-              <Link href="/stage">
-                <Button type="button">Добавить практики</Button>
-              </Link>
-            </div>
-          ) : (
-            <ul className="space-y-3">
-              {practices.map((practice) => {
-                const checkIn = getCheckInForPractice(
-                  data,
-                  practice.id,
-                  date,
-                );
-                return (
-                  <li key={practice.id} className="practice-card rounded-md p-4">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <Badge tone="metal">Практика</Badge>
-                      <span className="text-xs text-[var(--faint)]">
-                        внутри этапа «{stage.title}»
-                      </span>
-                    </div>
-                    <LadderChain
-                      dream={dream.title}
-                      stage={stage.title}
-                      practice={practice.title}
-                    />
-                    {practice.cue ? (
-                      <p className="text-xs text-[var(--muted)]">
-                        Когда/где: {practice.cue}
-                      </p>
-                    ) : null}
-                    {practice.whyForStage ? (
-                      <p className="mt-1 text-xs text-[var(--muted)]">
-                        Зачем этапу: {practice.whyForStage}
-                      </p>
-                    ) : null}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <Button
-                        type="button"
-                        variant={
-                          checkIn?.status === "done" ? "primary" : "ghost"
-                        }
-                        onClick={() =>
-                          setCheckIn(practice.id, date, "done")
-                        }
-                      >
-                        Сделано · {XP_HINTS.checkIn}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant={
-                          checkIn?.status === "skipped" ? "primary" : "ghost"
-                        }
-                        onClick={() =>
-                          setCheckIn(practice.id, date, "skipped")
-                        }
-                      >
-                        Пропуск
-                      </Button>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
+      ) : practices.length === 0 ? (
+        <Section title="Практики" hint={`Этап «${stage.title}».`}>
+          <div className="space-y-3">
+            <Hint title="С чего начать">
+              <p>
+                На экране <strong>Этап</strong> добавь практики: ежедневные и
+                при необходимости еженедельные.
+              </p>
+            </Hint>
+            <Link href="/stage">
+              <Button type="button">Добавить практики</Button>
+            </Link>
+          </div>
         </Section>
+      ) : (
+        <>
+          <Section
+            title="На сегодня"
+            hint={`Ежедневные практики этапа «${stage.title}». Отметка даёт ${XP_HINTS.checkIn}.`}
+          >
+            {daily.length === 0 ? (
+              <p className="text-sm text-[var(--muted)]">
+                Ежедневных практик нет. Их можно добавить на экране этапа.
+              </p>
+            ) : (
+              <ul className="space-y-3">
+                {daily.map((practice) => (
+                  <PracticeCard
+                    key={practice.id}
+                    practice={practice}
+                    dreamTitle={dream.title}
+                    stageTitle={stage.title}
+                    checkIn={getCheckInForPracticePeriod(data, practice)}
+                    onDone={() =>
+                      setPracticePeriodCheckIn(
+                        practice.id,
+                        practice.frequency,
+                        "done",
+                      )
+                    }
+                    onSkip={() =>
+                      setPracticePeriodCheckIn(
+                        practice.id,
+                        practice.frequency,
+                        "skipped",
+                      )
+                    }
+                    onClear={() =>
+                      clearPracticePeriodCheckIn(
+                        practice.id,
+                        practice.frequency,
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            )}
+          </Section>
+
+          {weekly.length > 0 ? (
+            <Section
+              title="На эту неделю"
+              hint={`${weekLabel}. Одна отметка на практику за всю неделю.`}
+            >
+              <ul className="space-y-3">
+                {weekly.map((practice) => (
+                  <PracticeCard
+                    key={practice.id}
+                    practice={practice}
+                    dreamTitle={dream.title}
+                    stageTitle={stage.title}
+                    checkIn={getCheckInForPracticePeriod(data, practice)}
+                    onDone={() =>
+                      setPracticePeriodCheckIn(
+                        practice.id,
+                        practice.frequency,
+                        "done",
+                      )
+                    }
+                    onSkip={() =>
+                      setPracticePeriodCheckIn(
+                        practice.id,
+                        practice.frequency,
+                        "skipped",
+                      )
+                    }
+                    onClear={() =>
+                      clearPracticePeriodCheckIn(
+                        practice.id,
+                        practice.frequency,
+                      )
+                    }
+                  />
+                ))}
+              </ul>
+            </Section>
+          ) : null}
+        </>
       )}
     </div>
   );

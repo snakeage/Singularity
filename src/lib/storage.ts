@@ -14,6 +14,9 @@ export function loadData(): AppData {
     return {
       ...EMPTY_DATA,
       ...parsed,
+      profile: {
+        name: parsed.profile?.name?.trim() ?? "",
+      },
       version: 1,
     };
   } catch {

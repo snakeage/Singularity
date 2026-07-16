@@ -1,4 +1,5 @@
-import type { AppData, Dream, Milestone, Practice, Stage } from "./types";
+import { toISODate, weekEndISO, weekStartISO } from "./dates";
+import type { AppData, CheckIn, Dream, Milestone, Practice, Stage } from "./types";
 
 export function getFocusDream(data: AppData): Dream | undefined {
   return (
@@ -52,5 +53,43 @@ export function getCheckInForPractice(
 ) {
   return data.checkIns.find(
     (c) => c.practiceId === practiceId && c.date === date,
+  );
+}
+
+/** Period key used when saving a check-in: day ISO or week Monday ISO. */
+export function getPracticePeriodKey(
+  practice: Practice,
+  refDate = new Date(),
+): string {
+  return practice.frequency === "weekly"
+    ? weekStartISO(refDate)
+    : toISODate(refDate);
+}
+
+/**
+ * Find check-in for the current day (daily) or current week (weekly).
+ * Weekly also matches legacy mid-week dates in the same week.
+ */
+export function getCheckInForPracticePeriod(
+  data: AppData,
+  practice: Practice,
+  refDate = new Date(),
+): CheckIn | undefined {
+  if (practice.frequency === "daily") {
+    return getCheckInForPractice(data, practice.id, toISODate(refDate));
+  }
+
+  const start = weekStartISO(refDate);
+  const end = weekEndISO(refDate);
+  return (
+    data.checkIns.find(
+      (c) => c.practiceId === practice.id && c.date === start,
+    ) ??
+    data.checkIns.find(
+      (c) =>
+        c.practiceId === practice.id &&
+        c.date >= start &&
+        c.date <= end,
+    )
   );
 }

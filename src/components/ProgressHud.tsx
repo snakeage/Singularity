@@ -11,12 +11,14 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
   const progress = getCharacterProgress(data);
   if (!progress) return null;
 
+  const displayName = progress.name || "Путник";
+
   if (compact) {
     return (
       <div className="hidden min-w-[170px] sm:block">
         <div className="flex items-baseline justify-between gap-2 text-xs text-[var(--muted)]">
           <span>
-            Ур. {progress.level} · {progress.title}
+            {displayName} · ур. {progress.level}
           </span>
           <span className="text-[var(--metal)]">{progress.xp} XP</span>
         </div>
@@ -32,13 +34,13 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--metal)]">
-            Прокачка
+            Персонаж
           </p>
           <p className="font-display text-2xl text-[var(--ink)]">
-            Уровень {progress.level}
-            <span className="ml-2 text-base text-[var(--muted)]">
-              · {progress.title}
-            </span>
+            {displayName}
+          </p>
+          <p className="text-sm text-[var(--muted)]">
+            Уровень {progress.level} · {progress.title}
           </p>
         </div>
         <p className="text-sm text-[var(--metal)]">{progress.xp} XP</p>
@@ -69,7 +71,8 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
 
       <p className="mt-3 text-xs text-[var(--faint)]">
         Практика (отметка) {XP_HINTS.checkIn} · рубеж {XP_HINTS.milestone} ·
-        этап закрыт {XP_HINTS.stage} · обзор недели {XP_HINTS.review}.
+        этап закрыт {XP_HINTS.stage} · обзор недели {XP_HINTS.review}. Имя
+        меняется на экране «Данные».
       </p>
     </div>
   );

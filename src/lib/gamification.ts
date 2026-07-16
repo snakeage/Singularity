@@ -13,6 +13,7 @@ const XP_STAGE = 50;
 const XP_REVIEW = 15;
 
 export type CharacterProgress = {
+  name: string;
   xp: number;
   level: number;
   xpIntoLevel: number;
@@ -104,6 +105,7 @@ export function getCharacterProgress(data: AppData): CharacterProgress | null {
     : { done: 0, total: 0, ratio: 0 };
 
   return {
+    name: data.profile?.name?.trim() || "",
     xp,
     level,
     xpIntoLevel,

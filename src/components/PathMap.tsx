@@ -105,7 +105,7 @@ export function PathMap({ compact = false }: { compact?: boolean }) {
 
   const hereLabel =
     character != null
-      ? `Ур. ${character.level} · ${character.title}`
+      ? `${character.name || "Путник"} · ур. ${character.level}`
       : "В пути";
 
   return (
