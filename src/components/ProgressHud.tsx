@@ -61,7 +61,14 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
           label="Этап"
           value={`${progress.floor}/${progress.floorsTotal}`}
         />
-        <Stat label="Серия дней" value={`${progress.streakDays}`} />
+        <Stat
+          label="Серия норм"
+          value={
+            progress.streakDays > 0
+              ? `${progress.streakDays}`
+              : "—"
+          }
+        />
         <Stat
           label="Рубежи этапа"
           value={`${progress.milestonesDone}/${progress.milestonesTotal || "—"}`}
@@ -70,9 +77,9 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
       </div>
 
       <p className="mt-3 text-xs text-[var(--faint)]">
-        Практика (отметка) {XP_HINTS.checkIn} · рубеж {XP_HINTS.milestone} ·
-        этап закрыт {XP_HINTS.stage} · обзор недели {XP_HINTS.review}. Имя
-        меняется на экране «Данные».
+        Серия — дни подряд с «нормой» или «сильно» (не частично). Практика{" "}
+        {XP_HINTS.checkIn} · рубеж {XP_HINTS.milestone} · этап{" "}
+        {XP_HINTS.stage} · обзор {XP_HINTS.review}.
       </p>
     </div>
   );

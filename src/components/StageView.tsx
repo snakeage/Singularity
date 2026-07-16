@@ -2,14 +2,16 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
+import { XP_HINTS } from "@/lib/gamification";
 import {
   getActiveStage,
   getFocusDream,
   getMilestones,
   getPractices,
+  getStageMaterials,
+  getStageTeachers,
   stageProgress,
 } from "@/lib/selectors";
-import { XP_HINTS } from "@/lib/gamification";
 import {
   collectPracticeTags,
   formatTags,
@@ -33,9 +35,9 @@ import {
 } from "./ui";
 
 const sourceTypes: { value: GrowthSourceType; label: string }[] = [
+  { value: "mentor", label: "Ментор / наставник" },
   { value: "book", label: "Книга" },
   { value: "course", label: "Курс" },
-  { value: "mentor", label: "Ментор" },
   { value: "ai", label: "ИИ (прокачка из сети)" },
   { value: "practice", label: "Тренажёр" },
   { value: "other", label: "Другое" },
@@ -55,6 +57,7 @@ export function StageView() {
     addGrowthSource,
     updateGrowthSource,
     removeGrowthSource,
+    setPrimaryTeacher,
     completeStage,
   } = useApp();
 
@@ -88,15 +91,24 @@ export function StageView() {
   const [pEditTags, setPEditTags] = useState("");
   const [pEditMinMinutes, setPEditMinMinutes] = useState("");
 
-  const [sTitle, setSTitle] = useState("");
-  const [sType, setSType] = useState<GrowthSourceType>("ai");
-  const [sUrl, setSUrl] = useState("");
-  const [sNotes, setSNotes] = useState("");
+  const [tTitle, setTTitle] = useState("");
+  const [tType, setTType] = useState<GrowthSourceType>("mentor");
+  const [tUrl, setTUrl] = useState("");
+  const [tTeaching, setTTeaching] = useState("");
+  const [tWeekLesson, setTWeekLesson] = useState("");
+  const [tPrimary, setTPrimary] = useState(true);
+  const [mTitle, setMTitle] = useState("");
+  const [mType, setMType] = useState<GrowthSourceType>("book");
+  const [mUrl, setMUrl] = useState("");
+  const [mNotes, setMNotes] = useState("");
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [sEditTitle, setSEditTitle] = useState("");
-  const [sEditType, setSEditType] = useState<GrowthSourceType>("ai");
+  const [sEditType, setSEditType] = useState<GrowthSourceType>("mentor");
   const [sEditUrl, setSEditUrl] = useState("");
   const [sEditNotes, setSEditNotes] = useState("");
+  const [sEditTeaching, setSEditTeaching] = useState("");
+  const [sEditWeekLesson, setSEditWeekLesson] = useState("");
+  const [sEditPrimary, setSEditPrimary] = useState(false);
 
   if (!ready) {
     return <p className="text-sm text-[var(--muted)]">Загрузка…</p>;
@@ -138,7 +150,8 @@ export function StageView() {
   const filteredPractices = practices.filter((p) =>
     practiceMatchesQuery(p, practiceQuery, activeTag),
   );
-  const sources = data.growthSources.filter((g) => g.stageId === stage.id);
+  const teachers = getStageTeachers(data, stage.id);
+  const materials = getStageMaterials(data, stage.id);
   const progress = stageProgress(data, stage.id);
 
   function onAddMilestone(e: FormEvent) {
@@ -174,18 +187,40 @@ export function StageView() {
     setPMinMinutes("");
   }
 
-  function onAddSource(e: FormEvent) {
+  function onAddTeacher(e: FormEvent) {
     e.preventDefault();
-    if (!sTitle.trim()) return;
+    if (!tTitle.trim()) return;
     addGrowthSource(stage!.id, {
-      title: sTitle,
-      type: sType,
-      url: sUrl,
-      notes: sNotes,
+      title: tTitle,
+      type: tType,
+      url: tUrl,
+      role: "teacher",
+      teaching: tTeaching,
+      weekLesson: tWeekLesson,
+      primary: tPrimary,
     });
-    setSTitle("");
-    setSUrl("");
-    setSNotes("");
+    setTTitle("");
+    setTUrl("");
+    setTTeaching("");
+    setTWeekLesson("");
+    setTPrimary(true);
+    setTType("mentor");
+  }
+
+  function onAddMaterial(e: FormEvent) {
+    e.preventDefault();
+    if (!mTitle.trim()) return;
+    addGrowthSource(stage!.id, {
+      title: mTitle,
+      type: mType,
+      url: mUrl,
+      notes: mNotes,
+      role: "material",
+    });
+    setMTitle("");
+    setMUrl("");
+    setMNotes("");
+    setMType("book");
   }
 
   return (
@@ -688,11 +723,244 @@ export function StageView() {
       </Section>
 
       <Section
-        title="Источники роста"
-        hint="Учителя и знания. ИИ — современная «прокачка из сети», не автопилот."
+        title="Учитель этапа"
+        hint="Линия Лакуны: на ступени — кто уже умеет то, чему ты учишься. Один главный наставник."
+      >
+        <Hint title="Эпик ментора → урок недели">
+          <p>
+            Наставник часто даёт крупно: «пиши легенду». Это поле{" "}
+            <strong>чему учит</strong> — рамка всего этапа.{" "}
+            <strong>Урок недели</strong> — узкий кусок на эти 7 дней (глава,
+            сцена, навык). ИИ может помочь раздробить эпик, но не заменить
+            практику.
+          </p>
+        </Hint>
+        <ul className="mb-3 space-y-2 text-sm">
+          {teachers.map((s) => (
+            <li
+              key={s.id}
+              className={`rounded-md border p-3 ${
+                s.primary
+                  ? "border-[var(--metal)] bg-[var(--wash-2)]/30"
+                  : "border-[var(--line)] bg-[var(--panel)]"
+              }`}
+            >
+              {editingSourceId === s.id ? (
+                <div className="space-y-2">
+                  <Field label="Кто (имя / канал / книга-мастер)">
+                    <Input
+                      value={sEditTitle}
+                      onChange={(e) => setSEditTitle(e.target.value)}
+                    />
+                  </Field>
+                  <Field label="Тип">
+                    <Select
+                      value={sEditType}
+                      onChange={(e) =>
+                        setSEditType(e.target.value as GrowthSourceType)
+                      }
+                    >
+                      {sourceTypes.map((t) => (
+                        <option key={t.value} value={t.value}>
+                          {t.label}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Чему учит (эпик / рамка этапа)">
+                    <Textarea
+                      value={sEditTeaching}
+                      onChange={(e) => setSEditTeaching(e.target.value)}
+                      placeholder="Крупное поручение наставника"
+                    />
+                  </Field>
+                  <Field label="Урок этой недели (узкий кусок)">
+                    <Textarea
+                      value={sEditWeekLesson}
+                      onChange={(e) => setSEditWeekLesson(e.target.value)}
+                      placeholder="Один конкретный фокус на эти 7 дней"
+                    />
+                  </Field>
+                  <Field label="Ссылка">
+                    <Input
+                      value={sEditUrl}
+                      onChange={(e) => setSEditUrl(e.target.value)}
+                    />
+                  </Field>
+                  <label className="flex items-center gap-2 text-sm text-[var(--ink)]">
+                    <input
+                      type="checkbox"
+                      checked={sEditPrimary}
+                      onChange={(e) => setSEditPrimary(e.target.checked)}
+                    />
+                    Главный учитель этапа
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        if (!sEditTitle.trim()) return;
+                        updateGrowthSource(s.id, {
+                          title: sEditTitle,
+                          type: sEditType,
+                          url: sEditUrl,
+                          notes: sEditNotes,
+                          role: "teacher",
+                          teaching: sEditTeaching,
+                          weekLesson: sEditWeekLesson,
+                          primary: sEditPrimary,
+                        });
+                        setEditingSourceId(null);
+                      }}
+                    >
+                      Сохранить
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => setEditingSourceId(null)}
+                    >
+                      Отмена
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="mb-1 flex flex-wrap items-center gap-2">
+                    <Badge tone="metal">
+                      {s.primary ? "главный учитель" : "учитель"}
+                    </Badge>
+                    <span className="text-xs text-[var(--faint)]">
+                      {sourceTypes.find((t) => t.value === s.type)?.label ??
+                        s.type}
+                    </span>
+                  </div>
+                  <p className="font-medium text-[var(--ink)]">{s.title}</p>
+                  {s.teaching ? (
+                    <p className="mt-1 text-xs text-[var(--muted)]">
+                      Эпик / рамка: {s.teaching}
+                    </p>
+                  ) : null}
+                  {s.weekLesson ? (
+                    <p className="mt-1 text-xs text-[var(--ink)]">
+                      Урок недели: {s.weekLesson}
+                    </p>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        setEditingSourceId(s.id);
+                        setSEditTitle(s.title);
+                        setSEditType(s.type);
+                        setSEditUrl(s.url ?? "");
+                        setSEditNotes(s.notes ?? "");
+                        setSEditTeaching(s.teaching ?? "");
+                        setSEditWeekLesson(s.weekLesson ?? "");
+                        setSEditPrimary(Boolean(s.primary));
+                      }}
+                    >
+                      Изменить
+                    </Button>
+                    {!s.primary ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        onClick={() => setPrimaryTeacher(s.id)}
+                      >
+                        Сделать главным
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="danger"
+                      onClick={() => {
+                        if (window.confirm("Удалить этого учителя?")) {
+                          removeGrowthSource(s.id);
+                          if (editingSourceId === s.id) {
+                            setEditingSourceId(null);
+                          }
+                        }
+                      }}
+                    >
+                      Удалить
+                    </Button>
+                  </div>
+                </>
+              )}
+            </li>
+          ))}
+        </ul>
+        <form
+          onSubmit={onAddTeacher}
+          className="space-y-3 rounded-md border border-dashed border-[var(--metal)]/40 bg-[var(--panel)] p-4"
+        >
+          <p className="text-sm font-medium text-[var(--ink)]">
+            Добавить учителя
+          </p>
+          <Field label="Кто">
+            <Input
+              value={tTitle}
+              onChange={(e) => setTTitle(e.target.value)}
+              placeholder="Например: Лакуна, ментор Аня, курс X"
+              required
+            />
+          </Field>
+          <Field label="Тип">
+            <Select
+              value={tType}
+              onChange={(e) => setTType(e.target.value as GrowthSourceType)}
+            >
+              {sourceTypes.map((t) => (
+                <option key={t.value} value={t.value}>
+                  {t.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+          <Field label="Чему учит на этом этапе (эпик / рамка)">
+            <Textarea
+              value={tTeaching}
+              onChange={(e) => setTTeaching(e.target.value)}
+              placeholder="Например: собрать легенду мира, голос рассказчика"
+            />
+            <FieldHint>
+              Крупное поручение наставника на весь этап — не обязательно на одну
+              неделю.
+            </FieldHint>
+          </Field>
+          <Field label="Урок этой недели (узкий кусок)">
+            <Textarea
+              value={tWeekLesson}
+              onChange={(e) => setTWeekLesson(e.target.value)}
+              placeholder="Например: 1 страница происхождения героя"
+            />
+            <FieldHint>
+              Что именно берёшь из эпика ментора (или с ИИ) на эти 7 дней.
+            </FieldHint>
+          </Field>
+          <Field label="Ссылка">
+            <Input value={tUrl} onChange={(e) => setTUrl(e.target.value)} />
+          </Field>
+          <label className="flex items-center gap-2 text-sm text-[var(--ink)]">
+            <input
+              type="checkbox"
+              checked={tPrimary}
+              onChange={(e) => setTPrimary(e.target.checked)}
+            />
+            Главный учитель этапа
+          </label>
+          <Button type="submit">Добавить учителя</Button>
+        </form>
+      </Section>
+
+      <Section
+        title="Другие источники"
+        hint="Материалы без роли «учитель»: статьи, тулзы, заметки."
       >
         <ul className="mb-3 space-y-2 text-sm">
-          {sources.map((s) => (
+          {materials.map((s) => (
             <li
               key={s.id}
               className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-3"
@@ -741,6 +1009,7 @@ export function StageView() {
                           type: sEditType,
                           url: sEditUrl,
                           notes: sEditNotes,
+                          role: "material",
                         });
                         setEditingSourceId(null);
                       }}
@@ -783,13 +1052,26 @@ export function StageView() {
                     </Button>
                     <Button
                       type="button"
+                      variant="ghost"
+                      onClick={() => {
+                        updateGrowthSource(s.id, {
+                          title: s.title,
+                          type: s.type,
+                          url: s.url,
+                          notes: s.notes,
+                          role: "teacher",
+                          primary: teachers.length === 0,
+                        });
+                      }}
+                    >
+                      Сделать учителем
+                    </Button>
+                    <Button
+                      type="button"
                       variant="danger"
                       onClick={() => {
-                        if (window.confirm("Удалить этот источник роста?")) {
+                        if (window.confirm("Удалить этот источник?")) {
                           removeGrowthSource(s.id);
-                          if (editingSourceId === s.id) {
-                            setEditingSourceId(null);
-                          }
                         }
                       }}
                     >
@@ -802,22 +1084,23 @@ export function StageView() {
           ))}
         </ul>
         <form
-          onSubmit={onAddSource}
+          onSubmit={onAddMaterial}
           className="space-y-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-4"
         >
+          <p className="text-sm font-medium text-[var(--ink)]">
+            Добавить материал
+          </p>
           <Field label="Название">
             <Input
-              value={sTitle}
-              onChange={(e) => setSTitle(e.target.value)}
+              value={mTitle}
+              onChange={(e) => setMTitle(e.target.value)}
               required
             />
           </Field>
           <Field label="Тип">
             <Select
-              value={sType}
-              onChange={(e) =>
-                setSType(e.target.value as GrowthSourceType)
-              }
+              value={mType}
+              onChange={(e) => setMType(e.target.value as GrowthSourceType)}
             >
               {sourceTypes.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -827,18 +1110,17 @@ export function StageView() {
             </Select>
           </Field>
           <Field label="Ссылка">
-            <Input value={sUrl} onChange={(e) => setSUrl(e.target.value)} />
+            <Input value={mUrl} onChange={(e) => setMUrl(e.target.value)} />
           </Field>
           <Field label="Заметки">
             <Textarea
-              value={sNotes}
-              onChange={(e) => setSNotes(e.target.value)}
+              value={mNotes}
+              onChange={(e) => setMNotes(e.target.value)}
             />
           </Field>
           <Button type="submit">Добавить источник</Button>
         </form>
       </Section>
-
     </div>
   );
 }

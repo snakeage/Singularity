@@ -21,6 +21,7 @@ import { PathMap } from "./PathMap";
 import { PracticeHistoryStrip } from "./PracticeHistoryStrip";
 import { PracticeTimer } from "./PracticeTimer";
 import { ProgressHud } from "./ProgressHud";
+import { TeacherLane } from "./TeacherLane";
 import {
   Badge,
   Button,
@@ -257,6 +258,7 @@ export function TodayView() {
       </div>
 
       <ProgressHud />
+      {stage ? <TeacherLane stageId={stage.id} /> : null}
       <PathMap compact />
 
       <Hint title="Честная шкала">

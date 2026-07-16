@@ -190,6 +190,10 @@ type AppContextValue = {
       type: GrowthSourceType;
       url?: string;
       notes?: string;
+      role?: "teacher" | "material";
+      teaching?: string;
+      weekLesson?: string;
+      primary?: boolean;
     },
   ) => void;
   updateGrowthSource: (
@@ -199,9 +203,14 @@ type AppContextValue = {
       type: GrowthSourceType;
       url?: string;
       notes?: string;
+      role?: "teacher" | "material";
+      teaching?: string;
+      weekLesson?: string;
+      primary?: boolean;
     },
   ) => void;
   removeGrowthSource: (sourceId: string) => void;
+  setPrimaryTeacher: (sourceId: string) => void;
   addObstacle: (input: {
     dreamId?: string;
     stageId?: string;
@@ -1142,21 +1151,48 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const addGrowthSource: AppContextValue["addGrowthSource"] = useCallback(
     (stageId, input) => {
+      const role = input.role ?? "material";
       setData(
-        persist((prev) => ({
-          ...prev,
-          growthSources: [
-            ...prev.growthSources,
-            {
-              id: createId("source"),
-              stageId,
-              title: input.title.trim(),
-              type: input.type,
-              url: input.url?.trim() || undefined,
-              notes: input.notes?.trim() || undefined,
-            },
-          ],
-        })),
+        persist((prev) => {
+          const stageTeachers = prev.growthSources.filter(
+            (g) =>
+              g.stageId === stageId && (g.role ?? "material") === "teacher",
+          );
+          const makePrimary =
+            role === "teacher" &&
+            (input.primary || stageTeachers.length === 0);
+          const cleared = makePrimary
+            ? prev.growthSources.map((g) =>
+                g.stageId === stageId && (g.role ?? "material") === "teacher"
+                  ? { ...g, primary: false }
+                  : g,
+              )
+            : prev.growthSources;
+          return {
+            ...prev,
+            growthSources: [
+              ...cleared,
+              {
+                id: createId("source"),
+                stageId,
+                title: input.title.trim(),
+                type: input.type,
+                url: input.url?.trim() || undefined,
+                notes: input.notes?.trim() || undefined,
+                role,
+                primary: makePrimary || undefined,
+                teaching:
+                  role === "teacher"
+                    ? input.teaching?.trim() || undefined
+                    : undefined,
+                weekLesson:
+                  role === "teacher"
+                    ? input.weekLesson?.trim() || undefined
+                    : undefined,
+              },
+            ],
+          };
+        }),
       );
     },
     [],
@@ -1165,20 +1201,47 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const updateGrowthSource: AppContextValue["updateGrowthSource"] = useCallback(
     (sourceId, input) => {
       setData(
-        persist((prev) => ({
-          ...prev,
-          growthSources: prev.growthSources.map((g) =>
-            g.id === sourceId
-              ? {
-                  ...g,
-                  title: input.title.trim(),
-                  type: input.type,
-                  url: input.url?.trim() || undefined,
-                  notes: input.notes?.trim() || undefined,
-                }
-              : g,
-          ),
-        })),
+        persist((prev) => {
+          const current = prev.growthSources.find((g) => g.id === sourceId);
+          if (!current) return prev;
+          const role = input.role ?? current.role ?? "material";
+          const makePrimary =
+            role === "teacher" && Boolean(input.primary);
+          return {
+            ...prev,
+            growthSources: prev.growthSources.map((g) => {
+              if (
+                makePrimary &&
+                g.stageId === current.stageId &&
+                (g.role ?? "material") === "teacher" &&
+                g.id !== sourceId
+              ) {
+                return { ...g, primary: false };
+              }
+              if (g.id !== sourceId) return g;
+              return {
+                ...g,
+                title: input.title.trim(),
+                type: input.type,
+                url: input.url?.trim() || undefined,
+                notes: input.notes?.trim() || undefined,
+                role,
+                primary:
+                  role === "teacher"
+                    ? makePrimary || g.primary || undefined
+                    : undefined,
+                teaching:
+                  role === "teacher"
+                    ? input.teaching?.trim() || undefined
+                    : undefined,
+                weekLesson:
+                  role === "teacher"
+                    ? input.weekLesson?.trim() || undefined
+                    : undefined,
+              };
+            }),
+          };
+        }),
       );
     },
     [],
@@ -1191,6 +1254,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev,
           growthSources: prev.growthSources.filter((g) => g.id !== sourceId),
         })),
+      );
+    },
+    [],
+  );
+
+  const setPrimaryTeacher: AppContextValue["setPrimaryTeacher"] = useCallback(
+    (sourceId) => {
+      setData(
+        persist((prev) => {
+          const target = prev.growthSources.find((g) => g.id === sourceId);
+          if (!target || (target.role ?? "material") !== "teacher") {
+            return prev;
+          }
+          return {
+            ...prev,
+            growthSources: prev.growthSources.map((g) => {
+              if (g.stageId !== target.stageId) return g;
+              if ((g.role ?? "material") !== "teacher") return g;
+              return {
+                ...g,
+                primary: g.id === sourceId,
+              };
+            }),
+          };
+        }),
       );
     },
     [],
@@ -1397,6 +1485,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addGrowthSource,
       updateGrowthSource,
       removeGrowthSource,
+      setPrimaryTeacher,
       addObstacle,
       updateObstacle,
       removeObstacle,
@@ -1445,6 +1534,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       addGrowthSource,
       updateGrowthSource,
       removeGrowthSource,
+      setPrimaryTeacher,
       addObstacle,
       updateObstacle,
       removeObstacle,

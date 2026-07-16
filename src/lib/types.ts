@@ -96,6 +96,9 @@ export type PracticeTimerSession = {
   periodKey?: string;
 };
 
+/** material = book/course/etc; teacher = mentor figure for the stage (Lacuna-lane). */
+export type GrowthSourceRole = "teacher" | "material";
+
 export type GrowthSource = {
   id: string;
   stageId: string;
@@ -103,6 +106,14 @@ export type GrowthSource = {
   type: GrowthSourceType;
   url?: string;
   notes?: string;
+  /** Defaults to material when missing (legacy data). */
+  role?: GrowthSourceRole;
+  /** At most one primary teacher per stage. */
+  primary?: boolean;
+  /** What this teacher trains you for on this stage. */
+  teaching?: string;
+  /** Current week focus / lesson from the teacher. */
+  weekLesson?: string;
 };
 
 export type Obstacle = {

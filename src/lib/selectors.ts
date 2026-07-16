@@ -11,6 +11,7 @@ import type {
   CheckIn,
   CheckInStatus,
   Dream,
+  GrowthSource,
   Milestone,
   PointA,
   Practice,
@@ -94,6 +95,40 @@ export function getPractices(data: AppData, stageId: string): Practice[] {
   return data.practices.filter(
     (p) => p.stageId === stageId && p.status === "active",
   );
+}
+
+export function getGrowthSources(
+  data: AppData,
+  stageId: string,
+): GrowthSource[] {
+  return data.growthSources.filter((g) => g.stageId === stageId);
+}
+
+export function getStageTeachers(
+  data: AppData,
+  stageId: string,
+): GrowthSource[] {
+  return getGrowthSources(data, stageId).filter(
+    (g) => (g.role ?? "material") === "teacher",
+  );
+}
+
+export function getStageMaterials(
+  data: AppData,
+  stageId: string,
+): GrowthSource[] {
+  return getGrowthSources(data, stageId).filter(
+    (g) => (g.role ?? "material") === "material",
+  );
+}
+
+/** Primary teacher for the stage (Lacuna-lane), if any. */
+export function getPrimaryTeacher(
+  data: AppData,
+  stageId: string,
+): GrowthSource | undefined {
+  const teachers = getStageTeachers(data, stageId);
+  return teachers.find((t) => t.primary) ?? teachers[0];
 }
 
 export function stageProgress(data: AppData, stageId: string): {
