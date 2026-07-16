@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { getFocusDream, getStagesForDream } from "@/lib/selectors";
+import {
+  getDreams,
+  getFocusDream,
+  getLatestPointA,
+  getPointAsForDream,
+  getStagesForDream,
+} from "@/lib/selectors";
 import { useApp } from "@/store/AppProvider";
 import { StagesEditor } from "./StagesEditor";
 import { WoopBlock } from "./WoopBlock";
@@ -16,23 +22,34 @@ import {
   Textarea,
 } from "./ui";
 
+const emptyDreamForm = () => ({
+  title: "",
+  why: "",
+  outcomeVision: "",
+  horizon: "",
+  context: "",
+});
+
 export function DreamView() {
-  const { ready, data, createDream, updateDream, savePointA } = useApp();
+  const {
+    ready,
+    data,
+    createDream,
+    setFocusDream,
+    updateDream,
+    savePointA,
+  } = useApp();
 
   const dream = getFocusDream(data);
-  const pointA = dream
-    ? data.pointAs.find((p) => p.dreamId === dream.id)
-    : undefined;
+  const allDreams = getDreams(data);
+  const pointA = dream ? getLatestPointA(data, dream.id) : undefined;
+  const pointHistory = dream
+    ? getPointAsForDream(data, dream.id).slice(1)
+    : [];
   const stages = dream ? getStagesForDream(data, dream.id) : [];
 
-  const [dreamForm, setDreamForm] = useState({
-    title: "",
-    why: "",
-    outcomeVision: "",
-    horizon: "",
-    context: "",
-  });
-
+  const [creatingNew, setCreatingNew] = useState(false);
+  const [dreamForm, setDreamForm] = useState(emptyDreamForm());
   const [pointForm, setPointForm] = useState({
     skills: "",
     resources: "",
@@ -41,7 +58,11 @@ export function DreamView() {
   });
 
   useEffect(() => {
-    if (!dream) return;
+    if (creatingNew) return;
+    if (!dream) {
+      setDreamForm(emptyDreamForm());
+      return;
+    }
     setDreamForm({
       title: dream.title,
       why: dream.why,
@@ -49,10 +70,18 @@ export function DreamView() {
       horizon: dream.horizon,
       context: dream.context ?? "",
     });
-  }, [dream]);
+  }, [dream, creatingNew]);
 
   useEffect(() => {
-    if (!pointA) return;
+    if (!pointA) {
+      setPointForm({
+        skills: "",
+        resources: "",
+        constraints: "",
+        notes: "",
+      });
+      return;
+    }
     setPointForm({
       skills: pointA.skills,
       resources: pointA.resources,
@@ -62,12 +91,13 @@ export function DreamView() {
   }, [pointA]);
 
   const dreamDirty =
-    !dream ||
-    dreamForm.title !== dream.title ||
-    dreamForm.why !== dream.why ||
-    dreamForm.outcomeVision !== dream.outcomeVision ||
-    dreamForm.horizon !== dream.horizon ||
-    dreamForm.context !== (dream.context ?? "");
+    !!dream &&
+    !creatingNew &&
+    (dreamForm.title !== dream.title ||
+      dreamForm.why !== dream.why ||
+      dreamForm.outcomeVision !== dream.outcomeVision ||
+      dreamForm.horizon !== dream.horizon ||
+      dreamForm.context !== (dream.context ?? ""));
 
   const pointDirty =
     !pointA ||
@@ -84,11 +114,12 @@ export function DreamView() {
     e.preventDefault();
     if (!dreamForm.title.trim()) return;
     createDream(dreamForm);
+    setCreatingNew(false);
   }
 
   function onSaveDream(e: FormEvent) {
     e.preventDefault();
-    if (!dream) return;
+    if (!dream || creatingNew) return;
     updateDream(dream.id, dreamForm);
   }
 
@@ -111,6 +142,8 @@ export function DreamView() {
     }
   }
 
+  const showCreateForm = !dream || creatingNew;
+
   return (
     <div className="space-y-10">
       <div>
@@ -118,12 +151,83 @@ export function DreamView() {
           Мечта
         </p>
         <h1 className="font-display text-3xl tracking-tight text-[var(--ink)]">
-          {dream ? dream.title : "Новая цель"}
+          {showCreateForm
+            ? creatingNew
+              ? "Новая мечта"
+              : "Новая цель"
+            : dream!.title}
         </h1>
         <p className="mt-1 text-sm text-[var(--muted)]">
           Далёкий ориентир. Работаешь на текущем этапе — мечта задаёт вектор.
         </p>
       </div>
+
+      {allDreams.length > 0 ? (
+        <Section
+          title="Фокус"
+          hint="Одна активная мечта. Остальные на паузе — можно вернуться."
+        >
+          <ul className="space-y-2">
+            {allDreams.map((d) => (
+              <li
+                key={d.id}
+                className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 ${
+                  d.status === "active"
+                    ? "border-[var(--accent)] bg-[var(--panel)]"
+                    : "border-[var(--line)] bg-[var(--panel)]/70"
+                }`}
+              >
+                <div>
+                  <p className="text-sm font-medium text-[var(--ink)]">
+                    {d.title}
+                  </p>
+                  <p className="text-xs text-[var(--faint)]">
+                    {d.status === "active"
+                      ? "в фокусе"
+                      : d.status === "paused"
+                        ? "на паузе"
+                        : d.status}
+                  </p>
+                </div>
+                {d.status === "active" ? (
+                  <Badge tone="accent">фокус</Badge>
+                ) : (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={() => {
+                      setFocusDream(d.id);
+                      setCreatingNew(false);
+                    }}
+                  >
+                    В фокус
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+          {!creatingNew ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setCreatingNew(true);
+                setDreamForm(emptyDreamForm());
+              }}
+            >
+              + Ещё одна мечта
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setCreatingNew(false)}
+            >
+              Отмена новой мечты
+            </Button>
+          )}
+        </Section>
+      ) : null}
 
       <Hint title="С чего писать">
         <p>
@@ -132,9 +236,17 @@ export function DreamView() {
         </p>
       </Hint>
 
-      <Section title={dream ? "Карточка мечты" : "Создать мечту"}>
+      <Section
+        title={
+          showCreateForm
+            ? creatingNew
+              ? "Создать ещё одну мечту"
+              : "Создать мечту"
+            : "Карточка мечты"
+        }
+      >
         <form
-          onSubmit={dream ? onSaveDream : onCreateDream}
+          onSubmit={showCreateForm ? onCreateDream : onSaveDream}
           className="space-y-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-4"
         >
           <Field label="Что (название)">
@@ -193,14 +305,14 @@ export function DreamView() {
             </FieldHint>
           </Field>
           <div className="flex flex-wrap items-center gap-3">
-            {!dream ? (
+            {showCreateForm ? (
               <Button type="submit">Создать мечту</Button>
             ) : dreamDirty ? (
               <Button type="submit">Сохранить изменения</Button>
             ) : (
               <Badge tone="accent">
                 Мечта сохранена
-                {dream.updatedAt
+                {dream?.updatedAt
                   ? ` · ${formatSavedAt(dream.updatedAt)}`
                   : ""}
               </Badge>
@@ -209,11 +321,11 @@ export function DreamView() {
         </form>
       </Section>
 
-      {dream ? (
+      {dream && !creatingNew ? (
         <>
           <Section
             title="Где я сейчас"
-            hint="Честный снимок старта — от него строим этапы, а не от красивой фантазии."
+            hint="Честный снимок старта. Каждое сохранение с изменениями добавляет версию в историю."
           >
             <Hint title="Зачем этот блок">
               <p>
@@ -277,7 +389,7 @@ export function DreamView() {
               <div className="flex flex-wrap items-center gap-3">
                 {!pointA || pointDirty ? (
                   <Button type="submit">
-                    {pointA ? "Сохранить изменения" : "Сохранить старт"}
+                    {pointA ? "Сохранить новый снимок" : "Сохранить старт"}
                   </Button>
                 ) : (
                   <Badge tone="accent">
@@ -286,6 +398,30 @@ export function DreamView() {
                 )}
               </div>
             </form>
+
+            {pointHistory.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-[var(--ink)]">
+                  История точки А
+                </p>
+                <ul className="space-y-2">
+                  {pointHistory.map((snap) => (
+                    <li
+                      key={snap.id}
+                      className="rounded-md border border-[var(--line)] bg-[var(--panel)]/70 px-3 py-2 text-xs text-[var(--muted)]"
+                    >
+                      <p className="font-medium text-[var(--ink)]">
+                        {formatSavedAt(snap.capturedAt)}
+                      </p>
+                      <p className="mt-1">Умею: {snap.skills || "—"}</p>
+                      <p>Ресурсы: {snap.resources || "—"}</p>
+                      <p>Мешает: {snap.constraints || "—"}</p>
+                      {snap.notes ? <p>Заметки: {snap.notes}</p> : null}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
           </Section>
 
           <StagesEditor dreamId={dream.id} stages={stages} />

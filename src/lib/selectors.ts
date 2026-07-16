@@ -5,7 +5,15 @@ import {
   weekEndISO,
   weekStartISO,
 } from "./dates";
-import type { AppData, CheckIn, Dream, Milestone, Practice, Stage } from "./types";
+import type {
+  AppData,
+  CheckIn,
+  Dream,
+  Milestone,
+  PointA,
+  Practice,
+  Stage,
+} from "./types";
 
 export type WeekDayBar = {
   date: string;
@@ -37,6 +45,28 @@ export function getFocusDream(data: AppData): Dream | undefined {
     data.dreams.find((d) => d.status === "draft") ??
     data.dreams[0]
   );
+}
+
+export function getDreams(data: AppData): Dream[] {
+  return [...data.dreams].sort((a, b) => {
+    if (a.status === "active" && b.status !== "active") return -1;
+    if (b.status === "active" && a.status !== "active") return 1;
+    return b.updatedAt.localeCompare(a.updatedAt);
+  });
+}
+
+/** Newest first. Multiple snapshots per dream = Point A history. */
+export function getPointAsForDream(data: AppData, dreamId: string): PointA[] {
+  return data.pointAs
+    .filter((p) => p.dreamId === dreamId)
+    .sort((a, b) => b.capturedAt.localeCompare(a.capturedAt));
+}
+
+export function getLatestPointA(
+  data: AppData,
+  dreamId: string,
+): PointA | undefined {
+  return getPointAsForDream(data, dreamId)[0];
 }
 
 export function getStagesForDream(data: AppData, dreamId: string): Stage[] {

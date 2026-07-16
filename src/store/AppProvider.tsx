@@ -50,6 +50,7 @@ type AppContextValue = {
     horizon: string;
     context?: string;
   }) => string;
+  setFocusDream: (dreamId: string) => void;
   updateDream: (
     dreamId: string,
     patch: Partial<{
@@ -260,6 +261,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return id;
   }, []);
 
+  const setFocusDream: AppContextValue["setFocusDream"] = useCallback(
+    (dreamId) => {
+      const ts = nowISO();
+      setData(
+        persist((prev) => {
+          if (!prev.dreams.some((d) => d.id === dreamId)) return prev;
+          return {
+            ...prev,
+            dreams: prev.dreams.map((d) => {
+              if (d.id === dreamId) {
+                return { ...d, status: "active" as const, updatedAt: ts };
+              }
+              if (d.status === "active") {
+                return { ...d, status: "paused" as const, updatedAt: ts };
+              }
+              return d;
+            }),
+          };
+        }),
+      );
+    },
+    [],
+  );
+
   const updateDream: AppContextValue["updateDream"] = useCallback(
     (dreamId, patch) => {
       setData(
@@ -284,23 +309,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (dreamId, input) => {
       setData(
         persist((prev) => {
-          const existing = prev.pointAs.find((p) => p.dreamId === dreamId);
-          if (existing) {
-            return {
-              ...prev,
-              pointAs: prev.pointAs.map((p) =>
-                p.dreamId === dreamId
-                  ? {
-                      ...p,
-                      skills: input.skills,
-                      resources: input.resources,
-                      constraints: input.constraints,
-                      notes: input.notes,
-                      capturedAt: nowISO(),
-                    }
-                  : p,
-              ),
-            };
+          const latest = prev.pointAs
+            .filter((p) => p.dreamId === dreamId)
+            .sort((a, b) => b.capturedAt.localeCompare(a.capturedAt))[0];
+          const next = {
+            skills: input.skills.trim(),
+            resources: input.resources.trim(),
+            constraints: input.constraints.trim(),
+            notes: input.notes?.trim() || undefined,
+          };
+          if (
+            latest &&
+            latest.skills === next.skills &&
+            latest.resources === next.resources &&
+            latest.constraints === next.constraints &&
+            (latest.notes ?? "") === (next.notes ?? "")
+          ) {
+            return prev;
           }
           return {
             ...prev,
@@ -309,10 +334,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               {
                 id: createId("pointa"),
                 dreamId,
-                skills: input.skills,
-                resources: input.resources,
-                constraints: input.constraints,
-                notes: input.notes,
+                ...next,
                 capturedAt: nowISO(),
               },
             ],
@@ -1074,6 +1096,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       exportBackup,
       importBackupFile,
       createDream,
+      setFocusDream,
       updateDream,
       savePointA,
       replaceStages,
@@ -1114,6 +1137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       exportBackup,
       importBackupFile,
       createDream,
+      setFocusDream,
       updateDream,
       savePointA,
       replaceStages,
