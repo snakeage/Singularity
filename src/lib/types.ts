@@ -119,8 +119,17 @@ export type Review = {
   createdAt: string;
 };
 
+export type Reminders = {
+  enabled: boolean;
+  /** Local time HH:MM */
+  time: string;
+  /** ISO date (YYYY-MM-DD) of last fired reminder */
+  lastSentDate?: string;
+};
+
 export type Profile = {
   name: string;
+  reminders?: Reminders;
 };
 
 export type AppData = {

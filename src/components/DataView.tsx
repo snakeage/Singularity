@@ -2,6 +2,11 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { resetOnboarding } from "@/lib/onboarding";
+import {
+  DEFAULT_REMINDERS,
+  normalizeReminders,
+  requestNotificationPermission,
+} from "@/lib/reminders";
 import { useApp } from "@/store/AppProvider";
 import { Badge, Button, Field, FieldHint, Input, Section } from "./ui";
 
@@ -12,22 +17,62 @@ export function DataView() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [remindOn, setRemindOn] = useState(false);
+  const [remindTime, setRemindTime] = useState(DEFAULT_REMINDERS.time);
 
   useEffect(() => {
     setName(data.profile?.name ?? "");
-  }, [data.profile?.name]);
+    const reminders = normalizeReminders(data.profile?.reminders);
+    setRemindOn(reminders.enabled);
+    setRemindTime(reminders.time);
+  }, [data.profile?.name, data.profile?.reminders]);
 
   if (!ready) {
     return <p className="text-sm text-[var(--muted)]">Загрузка…</p>;
   }
 
+  const savedReminders = normalizeReminders(data.profile?.reminders);
   const nameDirty = name.trim() !== (data.profile?.name ?? "").trim();
+  const remindDirty =
+    remindOn !== savedReminders.enabled || remindTime !== savedReminders.time;
 
   function onSaveName(e: FormEvent) {
     e.preventDefault();
-    updateProfile(name);
+    updateProfile({ name });
     setMessage("Имя персонажа сохранено");
     setError(null);
+  }
+
+  async function onSaveReminders(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+
+    if (remindOn) {
+      const permission = await requestNotificationPermission();
+      if (permission === "unsupported") {
+        setError("Этот браузер не поддерживает уведомления.");
+        return;
+      }
+      if (permission !== "granted") {
+        setError(
+          "Нужно разрешить уведомления в браузере — иначе напоминание не придёт.",
+        );
+        return;
+      }
+    }
+
+    updateProfile({
+      reminders: {
+        enabled: remindOn,
+        time: remindTime,
+        lastSentDate: savedReminders.lastSentDate,
+      },
+    });
+    setMessage(
+      remindOn
+        ? `Напоминание включено на ${remindTime} (пока вкладка открыта).`
+        : "Напоминания выключены.",
+    );
   }
 
   return (
@@ -70,6 +115,46 @@ export function DataView() {
               <Badge tone="accent">Имя сохранено</Badge>
             ) : (
               <Badge>Имя ещё не задано</Badge>
+            )}
+          </div>
+        </form>
+      </Section>
+
+      <Section
+        title="Напоминания"
+        hint="Лёгкий пинок по незакрытым ежедневным практикам. Работает, пока открыта вкладка приложения."
+      >
+        <form
+          onSubmit={onSaveReminders}
+          className="space-y-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-4"
+        >
+          <label className="flex items-center gap-2 text-sm text-[var(--ink)]">
+            <input
+              type="checkbox"
+              checked={remindOn}
+              onChange={(e) => setRemindOn(e.target.checked)}
+            />
+            Напоминать про практики дня
+          </label>
+          <Field label="Время (локальное)">
+            <Input
+              type="time"
+              value={remindTime}
+              onChange={(e) => setRemindTime(e.target.value)}
+              disabled={!remindOn}
+            />
+            <FieldHint>
+              Один раз в день, если есть незакрытые ежедневные практики. Без
+              service worker фоновые пуши браузер не гарантирует.
+            </FieldHint>
+          </Field>
+          <div className="flex flex-wrap items-center gap-3">
+            {remindDirty ? (
+              <Button type="submit">Сохранить напоминание</Button>
+            ) : savedReminders.enabled ? (
+              <Badge tone="accent">Включено · {savedReminders.time}</Badge>
+            ) : (
+              <Badge>Выключено</Badge>
             )}
           </div>
         </form>

@@ -1,3 +1,4 @@
+import { normalizeReminders } from "./reminders";
 import type { AppData } from "./types";
 import { EMPTY_DATA } from "./types";
 
@@ -30,6 +31,7 @@ export function parseBackup(raw: string): AppData {
       ...parsed.data,
       profile: {
         name: parsed.data.profile?.name?.trim() ?? "",
+        reminders: normalizeReminders(parsed.data.profile?.reminders),
       },
       version: 1,
     };
@@ -48,6 +50,7 @@ export function parseBackup(raw: string): AppData {
       ...data,
       profile: {
         name: data.profile?.name?.trim() ?? "",
+        reminders: normalizeReminders(data.profile?.reminders),
       },
       version: 1,
     };

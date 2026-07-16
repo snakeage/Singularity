@@ -1,3 +1,4 @@
+import { normalizeReminders } from "./reminders";
 import { EMPTY_DATA, type AppData } from "./types";
 
 export const STORAGE_KEY = "singularity.appData.v1";
@@ -16,6 +17,7 @@ export function loadData(): AppData {
       ...parsed,
       profile: {
         name: parsed.profile?.name?.trim() ?? "",
+        reminders: normalizeReminders(parsed.profile?.reminders),
       },
       version: 1,
     };

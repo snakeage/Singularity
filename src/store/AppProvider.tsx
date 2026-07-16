@@ -25,12 +25,14 @@ import {
   getStagesForDream,
 } from "@/lib/selectors";
 import { loadData, saveData } from "@/lib/storage";
+import { normalizeReminders } from "@/lib/reminders";
 import {
   EMPTY_DATA,
   type AppData,
   type CheckInStatus,
   type GrowthSourceType,
   type PracticeFrequency,
+  type Reminders,
 } from "@/lib/types";
 
 type AppContextValue = {
@@ -126,7 +128,8 @@ type AppContextValue = {
     },
   ) => void;
   removePractice: (practiceId: string) => void;
-  updateProfile: (name: string) => void;
+  updateProfile: (patch: { name?: string; reminders?: Reminders }) => void;
+  markReminderSent: (dateISO: string) => void;
   setCheckIn: (
     practiceId: string,
     date: string,
@@ -686,12 +689,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const updateProfile: AppContextValue["updateProfile"] = useCallback(
-    (name) => {
+    (patch) => {
       setData(
         persist((prev) => ({
           ...prev,
-          profile: { name: name.trim() },
+          profile: {
+            name:
+              patch.name !== undefined
+                ? patch.name.trim()
+                : (prev.profile?.name ?? ""),
+            reminders:
+              patch.reminders !== undefined
+                ? normalizeReminders(patch.reminders)
+                : normalizeReminders(prev.profile?.reminders),
+          },
         })),
+      );
+    },
+    [],
+  );
+
+  const markReminderSent: AppContextValue["markReminderSent"] = useCallback(
+    (dateISO) => {
+      setData(
+        persist((prev) => {
+          const reminders = normalizeReminders(prev.profile?.reminders);
+          return {
+            ...prev,
+            profile: {
+              name: prev.profile?.name ?? "",
+              reminders: { ...reminders, lastSentDate: dateISO },
+            },
+          };
+        }),
       );
     },
     [],
@@ -1038,6 +1068,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePractice,
       removePractice,
       updateProfile,
+      markReminderSent,
       setCheckIn,
       clearCheckIn,
       setPracticePeriodCheckIn,
@@ -1077,6 +1108,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       updatePractice,
       removePractice,
       updateProfile,
+      markReminderSent,
       setCheckIn,
       clearCheckIn,
       setPracticePeriodCheckIn,
