@@ -1,8 +1,11 @@
 "use client";
 
 import Image from "next/image";
-import type { MomentKind } from "@/lib/practiceMoments";
-import { MOMENT_IMAGE } from "@/lib/practiceMoments";
+import {
+  MOMENT_IMAGE,
+  momentHeading,
+  type MomentKind,
+} from "@/lib/practiceMoments";
 import { Button } from "./ui";
 
 export type MomentChoice = {
@@ -24,8 +27,6 @@ export function PracticeMomentDialog({
   choices: MomentChoice[];
   onChoose: (id: string) => void;
 }) {
-  const heading = kind === "norma" ? "Норма закрыта" : "Сильный заход";
-
   return (
     <div
       className="moment-dialog-backdrop"
@@ -48,7 +49,7 @@ export function PracticeMomentDialog({
         <div className="moment-dialog__body">
           <p className="moment-dialog__speaker">{speaker}</p>
           <h2 id="moment-dialog-title" className="moment-dialog__title">
-            {heading}
+            {momentHeading(kind)}
           </h2>
           <p className="moment-dialog__text">{body}</p>
           <div className="moment-dialog__choices">

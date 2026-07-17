@@ -91,7 +91,11 @@ export type CheckIn = {
 };
 
 /** Pause/resume session for a practice timer. */
-export type PracticeMomentKind = "norma" | "strong";
+export type PracticeMomentKind =
+  | "norma"
+  | "strong"
+  | "overwork"
+  | "checkpoint";
 
 export type PracticeTimerSession = {
   practiceId: string;
@@ -102,6 +106,11 @@ export type PracticeTimerSession = {
   periodKey?: string;
   /** Threshold dialogs already shown this period. */
   momentsShown?: PracticeMomentKind[];
+  /**
+   * Elapsed ms watermark for checkpoint spacing (set when strong fires,
+   * then advanced each checkpoint).
+   */
+  lastCheckpointElapsedMs?: number;
 };
 
 /** material = book/course/etc; teacher = mentor figure for the stage (Lacuna-lane). */

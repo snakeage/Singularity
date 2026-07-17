@@ -156,10 +156,11 @@ type AppContextValue = {
   resetPracticeTimer: (practiceId: string) => void;
   /** Set paused timer to an exact minute count (long-run honesty). */
   setPracticeTimerMinutes: (practiceId: string, minutes: number) => void;
-  /** Remember which effort-moment dialogs fired this timer period. */
+  /** Remember which effort-moment dialogs fired this period. */
   markPracticeMoments: (
     practiceId: string,
     kinds: PracticeMomentKind[],
+    options?: { checkpointElapsedMs?: number },
   ) => void;
   /** Clear moment flags so new thresholds can fire after a min bump. */
   clearPracticeMoments: (practiceId: string) => void;
@@ -911,6 +912,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 runningSince: null,
                 periodKey: existing?.periodKey ?? periodKey,
                 momentsShown: existing?.momentsShown,
+                lastCheckpointElapsedMs: existing?.lastCheckpointElapsedMs,
               },
             ],
           };
@@ -919,8 +921,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, []);
 
   const markPracticeMoments: AppContextValue["markPracticeMoments"] =
-    useCallback((practiceId, kinds) => {
-      if (kinds.length === 0) return;
+    useCallback((practiceId, kinds, options) => {
       setData(
         persist((prev) => {
           const practice = prev.practices.find((p) => p.id === practiceId);
@@ -928,16 +929,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const periodKey = getPracticePeriodKey(practice);
           const timers = prev.practiceTimers ?? [];
           const existing = timers.find((t) => t.practiceId === practiceId);
-          const merged = Array.from(
-            new Set([...(existing?.momentsShown ?? []), ...kinds]),
-          ) as PracticeMomentKind[];
+          const merged =
+            kinds.length > 0
+              ? (Array.from(
+                  new Set([...(existing?.momentsShown ?? []), ...kinds]),
+                ) as PracticeMomentKind[])
+              : existing?.momentsShown;
+          const checkpointElapsedMs =
+            options?.checkpointElapsedMs ?? existing?.lastCheckpointElapsedMs;
 
           if (existing) {
             return {
               ...prev,
               practiceTimers: timers.map((t) =>
                 t.practiceId === practiceId
-                  ? { ...t, momentsShown: merged }
+                  ? {
+                      ...t,
+                      momentsShown: merged,
+                      lastCheckpointElapsedMs: checkpointElapsedMs,
+                    }
                   : t,
               ),
             };
@@ -953,6 +963,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 runningSince: null,
                 periodKey,
                 momentsShown: merged,
+                lastCheckpointElapsedMs: checkpointElapsedMs,
               },
             ],
           };
@@ -967,7 +978,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
           ...prev,
           practiceTimers: (prev.practiceTimers ?? []).map((t) =>
             t.practiceId === practiceId
-              ? { ...t, momentsShown: [] }
+              ? {
+                  ...t,
+                  momentsShown: [],
+                  lastCheckpointElapsedMs: undefined,
+                }
               : t,
           ),
         })),

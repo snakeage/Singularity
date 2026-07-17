@@ -14,6 +14,8 @@ import {
   strongThreshold,
 } from "@/lib/practiceLevels";
 import {
+  CHECKPOINT_EVERY_MINUTES,
+  OVERWORK_MIN_MULTIPLIER,
   momentBody,
   momentSpeaker,
   type MomentKind,
@@ -122,27 +124,42 @@ export function PracticeTimer({
 
     const shown = session.momentsShown ?? [];
     const strongAt = strongThreshold(min);
+    const overworkAt = Math.ceil(min * OVERWORK_MIN_MULTIPLIER);
+    const strongMs = strongAt * 60_000;
+    const checkpointEveryMs = CHECKPOINT_EVERY_MINUTES * 60_000;
     let next: MomentKind | null = null;
     const mark: MomentKind[] = [];
+    let checkpointElapsedMs: number | undefined;
 
     if (minutes >= strongAt && !shown.includes("strong")) {
       next = "strong";
       mark.push("strong");
       if (!shown.includes("norma")) mark.push("norma");
+      checkpointElapsedMs = strongMs;
     } else if (minutes >= min && !shown.includes("norma")) {
       next = "norma";
       mark.push("norma");
+    } else if (minutes >= overworkAt && !shown.includes("overwork")) {
+      next = "overwork";
+      mark.push("overwork");
+    } else if (minutes >= strongAt) {
+      const watermark = session.lastCheckpointElapsedMs ?? strongMs;
+      if (elapsedMs >= watermark + checkpointEveryMs) {
+        next = "checkpoint";
+        checkpointElapsedMs = elapsedMs;
+      }
     }
 
     if (!next) return;
 
     momentLock.current = true;
     if (session.runningSince) pausePracticeTimer(practice.id);
-    markPracticeMoments(practice.id, mark);
+    markPracticeMoments(practice.id, mark, { checkpointElapsedMs });
     setMoment(next);
   }, [
     min,
     minutes,
+    elapsedMs,
     closed,
     session,
     moment,
@@ -220,6 +237,23 @@ export function PracticeTimer({
       pausePracticeTimer(practice.id);
       return;
     }
+    if (id === "fix-time") {
+      const raw = window.prompt(
+        "Сколько минут реально было у практики?",
+        String(minutes),
+      );
+      if (raw == null) {
+        pausePracticeTimer(practice.id);
+        return;
+      }
+      const n = Number.parseInt(raw, 10);
+      if (!Number.isFinite(n) || n <= 0) {
+        pausePracticeTimer(practice.id);
+        return;
+      }
+      setPracticeTimerMinutes(practice.id, n);
+      return;
+    }
     if (id === "ease" && stepDown != null) {
       setPracticeMinMinutes(practice.id, stepDown);
       clearPracticeMoments(practice.id);
@@ -288,7 +322,20 @@ export function PracticeTimer({
               : []),
             { id: "fix", label: "Закрыть практику · сильно" },
           ]
-        : [];
+        : moment === "overwork"
+          ? [
+              { id: "continue", label: "Продолжить", variant: "primary" },
+              { id: "rest", label: "Пауза" },
+              { id: "fix-time", label: "Поправить время" },
+              { id: "fix", label: "Закрыть практику" },
+            ]
+          : moment === "checkpoint"
+            ? [
+                { id: "continue", label: "Остаюсь на посту", variant: "primary" },
+                { id: "rest", label: "Пауза" },
+                { id: "fix", label: "Закрыть практику" },
+              ]
+            : [];
 
   return (
     <div className="mt-3 space-y-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-3">

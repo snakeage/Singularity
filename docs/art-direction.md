@@ -71,8 +71,7 @@
 
 - **16:9**, JPEG ~1280px по длинной стороне, ≤250 KB.
 - `public/moments/<kind>.jpg`
-- Сейчас: `norma.jpg`, `strong.jpg`
-- План (N9): `overwork.jpg`, `checkpoint.jpg`
+- Сейчас: `norma.jpg`, `strong.jpg`, `overwork.jpg`, `checkpoint.jpg`
 
 ## Настроение по типу момента × локация
 
