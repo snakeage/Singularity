@@ -143,7 +143,7 @@ export function Badge({
         : tone === "partial"
           ? "bg-[var(--level-partial)]/18 text-[#9a5b05] ring-1 ring-[var(--level-partial)]/40"
           : tone === "strong"
-            ? "bg-[var(--level-strong)]/90 text-[var(--accent-ink)] ring-1 ring-[var(--level-strong)]"
+            ? "bg-[var(--level-strong)] text-[#1a1408] ring-1 ring-[var(--level-strong)]"
             : tone === "skip"
               ? "bg-[var(--panel-2)]/70 text-[var(--faint)]"
               : "bg-[var(--panel-2)]/70 text-[var(--muted)]";

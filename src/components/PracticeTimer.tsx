@@ -2,10 +2,23 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  getEffortBarState,
+  proposeRecalibrate,
+  proposeStepDown,
+  proposeStepUp,
+} from "@/lib/effortLadder";
+import {
   LEVEL_LABEL,
   longRunThresholdMinutes,
   levelTone,
+  strongThreshold,
 } from "@/lib/practiceLevels";
+import {
+  momentBody,
+  momentSpeaker,
+  type MomentKind,
+} from "@/lib/practiceMoments";
+import { getPrimaryTeacher } from "@/lib/selectors";
 import {
   elapsedToMinutes,
   formatElapsed,
@@ -13,7 +26,12 @@ import {
 } from "@/lib/timer";
 import type { CheckIn, Practice } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
-import { Badge, Button, ProgressBar } from "./ui";
+import { EffortProgressBar } from "./EffortProgressBar";
+import {
+  PracticeMomentDialog,
+  type MomentChoice,
+} from "./PracticeMomentDialog";
+import { Badge, Button } from "./ui";
 
 export function PracticeTimer({
   practice,
@@ -29,6 +47,9 @@ export function PracticeTimer({
     pausePracticeTimer,
     resetPracticeTimer,
     setPracticeTimerMinutes,
+    markPracticeMoments,
+    clearPracticeMoments,
+    setPracticeMinMinutes,
     completePracticeWithTimer,
   } = useApp();
 
@@ -36,7 +57,9 @@ export function PracticeTimer({
     (t) => t.practiceId === practice.id,
   );
   const [now, setNow] = useState(() => Date.now());
+  const [moment, setMoment] = useState<MomentKind | null>(null);
   const longRunAsked = useRef(false);
+  const momentLock = useRef(false);
 
   useEffect(() => {
     if (!session?.runningSince) return;
@@ -84,10 +107,53 @@ export function PracticeTimer({
   const elapsedMs = getTimerElapsedMs(session, now);
   const minutes = elapsedToMinutes(elapsedMs);
   const min = practice.minMinutes;
-  const ratio = min && min > 0 ? Math.min(1, minutes / min) : 0;
   const running = Boolean(session?.runningSince);
   const hasSession = Boolean(session);
   const closed = Boolean(checkIn);
+  const bar = min && min > 0 ? getEffortBarState(minutes, min) : null;
+  const teacher = getPrimaryTeacher(data, practice.stageId);
+  const speaker = momentSpeaker(teacher);
+  const stepUp = min && min > 0 ? proposeStepUp(min) : null;
+  const recalibrate = min && min > 0 ? proposeRecalibrate(min) : null;
+  const stepDown = min && min > 0 ? proposeStepDown(min) : null;
+
+  useEffect(() => {
+    if (!min || closed || !session || moment || momentLock.current) return;
+
+    const shown = session.momentsShown ?? [];
+    const strongAt = strongThreshold(min);
+    let next: MomentKind | null = null;
+    const mark: MomentKind[] = [];
+
+    if (minutes >= strongAt && !shown.includes("strong")) {
+      next = "strong";
+      mark.push("strong");
+      if (!shown.includes("norma")) mark.push("norma");
+    } else if (minutes >= min && !shown.includes("norma")) {
+      next = "norma";
+      mark.push("norma");
+    }
+
+    if (!next) return;
+
+    momentLock.current = true;
+    if (session.runningSince) pausePracticeTimer(practice.id);
+    markPracticeMoments(practice.id, mark);
+    setMoment(next);
+  }, [
+    min,
+    minutes,
+    closed,
+    session,
+    moment,
+    practice.id,
+    pausePracticeTimer,
+    markPracticeMoments,
+  ]);
+
+  useEffect(() => {
+    if (!moment) momentLock.current = false;
+  }, [moment]);
 
   if (closed && checkIn) {
     return (
@@ -110,11 +176,132 @@ export function PracticeTimer({
   }
 
   function finish() {
-    completePracticeWithTimer(practice.id, practice.frequency);
+    return completePracticeWithTimer(practice.id, practice.frequency);
   }
+
+  function offerEaseAfterPartial() {
+    if (!min || !stepDown) return;
+    if (
+      window.confirm(
+        `Частично — до нормы не дотянул. Снизить планку с ${min} до ${stepDown} мин?`,
+      )
+    ) {
+      setPracticeMinMinutes(practice.id, stepDown);
+    }
+  }
+
+  function bumpAndContinue(next: number) {
+    setPracticeMinMinutes(practice.id, next);
+    clearPracticeMoments(practice.id);
+    startPracticeTimer(practice.id);
+  }
+
+  function bumpAndClose(next: number) {
+    // Close on the OLD minimum first, then raise for future sessions.
+    finish();
+    setPracticeMinMinutes(practice.id, next);
+  }
+
+  function onMomentChoose(id: string) {
+    const kind = moment;
+    setMoment(null);
+    if (!kind) return;
+
+    if (id === "fix") {
+      const result = finish();
+      if (result.status === "partial") offerEaseAfterPartial();
+      return;
+    }
+    if (id === "continue") {
+      startPracticeTimer(practice.id);
+      return;
+    }
+    if (id === "rest") {
+      pausePracticeTimer(practice.id);
+      return;
+    }
+    if (id === "ease" && stepDown != null) {
+      setPracticeMinMinutes(practice.id, stepDown);
+      clearPracticeMoments(practice.id);
+      pausePracticeTimer(practice.id);
+      return;
+    }
+    if (id === "step-continue" && stepUp != null) {
+      bumpAndContinue(stepUp);
+      return;
+    }
+    if (id === "step-close" && stepUp != null) {
+      bumpAndClose(stepUp);
+      return;
+    }
+    if (id === "recal-continue" && recalibrate != null) {
+      bumpAndContinue(recalibrate);
+      return;
+    }
+    if (id === "recal-close" && recalibrate != null) {
+      bumpAndClose(recalibrate);
+    }
+  }
+
+  const momentChoices: MomentChoice[] =
+    moment === "norma"
+      ? [
+          { id: "continue", label: "Продолжить", variant: "primary" },
+          { id: "rest", label: "Пауза" },
+          { id: "fix", label: "Закрыть практику · норма" },
+          ...(stepDown != null
+            ? [
+                {
+                  id: "ease",
+                  label: `Облегчить норму до ${stepDown} мин`,
+                } satisfies MomentChoice,
+              ]
+            : []),
+        ]
+      : moment === "strong"
+        ? [
+            { id: "continue", label: "Продолжить", variant: "primary" },
+            { id: "rest", label: "Пауза" },
+            ...(stepUp != null
+              ? [
+                  {
+                    id: "step-continue",
+                    label: `Поднять плавно до ${stepUp} мин и продолжить`,
+                  } satisfies MomentChoice,
+                  {
+                    id: "step-close",
+                    label: `Поднять плавно до ${stepUp} мин и закрыть`,
+                  } satisfies MomentChoice,
+                ]
+              : []),
+            ...(recalibrate != null && recalibrate !== stepUp
+              ? [
+                  {
+                    id: "recal-continue",
+                    label: `Подкалибровать до ${recalibrate} мин и продолжить`,
+                  } satisfies MomentChoice,
+                  {
+                    id: "recal-close",
+                    label: `Подкалибровать до ${recalibrate} мин и закрыть`,
+                  } satisfies MomentChoice,
+                ]
+              : []),
+            { id: "fix", label: "Закрыть практику · сильно" },
+          ]
+        : [];
 
   return (
     <div className="mt-3 space-y-2 rounded-md border border-[var(--line)] bg-[var(--panel)] px-3 py-3">
+      {moment && bar ? (
+        <PracticeMomentDialog
+          kind={moment}
+          speaker={speaker}
+          body={momentBody(moment, practice, minutes, speaker, teacher)}
+          choices={momentChoices}
+          onChoose={onMomentChoose}
+        />
+      ) : null}
+
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div>
           <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-[var(--muted)]">
@@ -128,16 +315,20 @@ export function PracticeTimer({
           {min ? (
             <Badge
               tone={
-                minutes >= Math.ceil(min * 1.5)
+                bar?.phase === "strong"
                   ? "strong"
-                  : minutes >= min
+                  : bar?.phase === "norma"
                     ? "accent"
                     : minutes > 0
                       ? "partial"
                       : "muted"
               }
             >
-              план {min} мин
+              {bar?.phase === "strong"
+                ? `овер · ${minutes}/${min}`
+                : bar?.phase === "norma"
+                  ? `норма ✓ · ${minutes}/${min}`
+                  : `план ${min} мин`}
             </Badge>
           ) : (
             <Badge>без минимума</Badge>
@@ -147,15 +338,38 @@ export function PracticeTimer({
         </div>
       </div>
 
-      {min ? (
+      {bar ? (
         <div className="space-y-1">
           <div className="flex justify-between text-[10px] text-[var(--faint)]">
-            <span>К норме / сильно (≥{Math.ceil(min * 1.5)})</span>
+            <span>
+              Норма {bar.minMinutes} · сильно ≥{bar.strongAt}
+            </span>
             <span>
               {minutes}/{min} мин
+              {bar.phase === "norma" || bar.phase === "strong"
+                ? ` · +${Math.max(0, minutes - min!)}`
+                : ""}
             </span>
           </div>
-          <ProgressBar ratio={ratio} />
+          <EffortProgressBar state={bar} />
+          {bar.phase === "building" && stepDown != null ? (
+            <button
+              type="button"
+              className="text-[10px] text-[var(--muted)] underline-offset-2 hover:text-[var(--ink)] hover:underline"
+              onClick={() => {
+                if (
+                  window.confirm(
+                    `Снизить норму с ${min} до ${stepDown} мин?`,
+                  )
+                ) {
+                  setPracticeMinMinutes(practice.id, stepDown);
+                  clearPracticeMoments(practice.id);
+                }
+              }}
+            >
+              Слишком жёстко? Облегчить до {stepDown} мин
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -179,7 +393,14 @@ export function PracticeTimer({
         )}
         {hasSession || minutes > 0 ? (
           <>
-            <Button type="button" variant="primary" onClick={finish}>
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => {
+                const result = finish();
+                if (result.status === "partial") offerEaseAfterPartial();
+              }}
+            >
               Готово · {minutes} мин
             </Button>
             <Button
@@ -194,6 +415,7 @@ export function PracticeTimer({
                 }
                 resetPracticeTimer(practice.id);
                 longRunAsked.current = false;
+                setMoment(null);
               }}
             >
               Сброс

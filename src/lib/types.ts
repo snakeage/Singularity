@@ -91,6 +91,8 @@ export type CheckIn = {
 };
 
 /** Pause/resume session for a practice timer. */
+export type PracticeMomentKind = "norma" | "strong";
+
 export type PracticeTimerSession = {
   practiceId: string;
   accumulatedMs: number;
@@ -98,6 +100,8 @@ export type PracticeTimerSession = {
   runningSince: string | null;
   /** Day ISO or week-start ISO this session belongs to. */
   periodKey?: string;
+  /** Threshold dialogs already shown this period. */
+  momentsShown?: PracticeMomentKind[];
 };
 
 /** material = book/course/etc; teacher = mentor figure for the stage (Lacuna-lane). */

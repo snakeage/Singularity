@@ -45,6 +45,7 @@ import {
   type GrowthSourceType,
   type LearningWindowStatus,
   type PracticeFrequency,
+  type PracticeMomentKind,
   type Reminders,
   type WeekLessonTouch,
 } from "@/lib/types";
@@ -154,6 +155,15 @@ type AppContextValue = {
   resetPracticeTimer: (practiceId: string) => void;
   /** Set paused timer to an exact minute count (long-run honesty). */
   setPracticeTimerMinutes: (practiceId: string, minutes: number) => void;
+  /** Remember which effort-moment dialogs fired this timer period. */
+  markPracticeMoments: (
+    practiceId: string,
+    kinds: PracticeMomentKind[],
+  ) => void;
+  /** Clear moment flags so new thresholds can fire after a min bump. */
+  clearPracticeMoments: (practiceId: string) => void;
+  /** Progressive overload: raise practice minimum minutes. */
+  setPracticeMinMinutes: (practiceId: string, minMinutes: number) => void;
   /** Close timer into partial/done/strong from minutes. */
   completePracticeWithTimer: (
     practiceId: string,
@@ -881,6 +891,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const practice = prev.practices.find((p) => p.id === practiceId);
           if (!practice) return prev;
           const periodKey = getPracticePeriodKey(practice);
+          const existing = (prev.practiceTimers ?? []).find(
+            (t) => t.practiceId === practiceId,
+          );
           const others = (prev.practiceTimers ?? []).filter(
             (t) => t.practiceId !== practiceId,
           );
@@ -895,11 +908,81 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 practiceId,
                 accumulatedMs: safe * 60_000,
                 runningSince: null,
-                periodKey,
+                periodKey: existing?.periodKey ?? periodKey,
+                momentsShown: existing?.momentsShown,
               },
             ],
           };
         }),
+      );
+    }, []);
+
+  const markPracticeMoments: AppContextValue["markPracticeMoments"] =
+    useCallback((practiceId, kinds) => {
+      if (kinds.length === 0) return;
+      setData(
+        persist((prev) => {
+          const practice = prev.practices.find((p) => p.id === practiceId);
+          if (!practice) return prev;
+          const periodKey = getPracticePeriodKey(practice);
+          const timers = prev.practiceTimers ?? [];
+          const existing = timers.find((t) => t.practiceId === practiceId);
+          const merged = Array.from(
+            new Set([...(existing?.momentsShown ?? []), ...kinds]),
+          ) as PracticeMomentKind[];
+
+          if (existing) {
+            return {
+              ...prev,
+              practiceTimers: timers.map((t) =>
+                t.practiceId === practiceId
+                  ? { ...t, momentsShown: merged }
+                  : t,
+              ),
+            };
+          }
+
+          return {
+            ...prev,
+            practiceTimers: [
+              ...timers,
+              {
+                practiceId,
+                accumulatedMs: 0,
+                runningSince: null,
+                periodKey,
+                momentsShown: merged,
+              },
+            ],
+          };
+        }),
+      );
+    }, []);
+
+  const clearPracticeMoments: AppContextValue["clearPracticeMoments"] =
+    useCallback((practiceId) => {
+      setData(
+        persist((prev) => ({
+          ...prev,
+          practiceTimers: (prev.practiceTimers ?? []).map((t) =>
+            t.practiceId === practiceId
+              ? { ...t, momentsShown: [] }
+              : t,
+          ),
+        })),
+      );
+    }, []);
+
+  const setPracticeMinMinutes: AppContextValue["setPracticeMinMinutes"] =
+    useCallback((practiceId, minMinutes) => {
+      const safe = Math.max(1, Math.min(24 * 60, Math.round(minMinutes)));
+      setData(
+        persist((prev) => ({
+          ...prev,
+          practices: prev.practices.map((p) =>
+            p.id === practiceId ? { ...p, minMinutes: safe } : p,
+          ),
+        })),
       );
     }, []);
 
@@ -1486,6 +1569,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pausePracticeTimer,
       resetPracticeTimer,
       setPracticeTimerMinutes,
+      markPracticeMoments,
+      clearPracticeMoments,
+      setPracticeMinMinutes,
       completePracticeWithTimer,
       claimPracticeWithoutTimer,
       settlePracticeTimers,
@@ -1535,6 +1621,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pausePracticeTimer,
       resetPracticeTimer,
       setPracticeTimerMinutes,
+      markPracticeMoments,
+      clearPracticeMoments,
+      setPracticeMinMinutes,
       completePracticeWithTimer,
       claimPracticeWithoutTimer,
       settlePracticeTimers,
