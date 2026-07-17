@@ -178,9 +178,13 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-[var(--line)] bg-[var(--panel)]/60 px-5 py-8 text-center">
-      <h2 className="font-display text-2xl text-[var(--ink)]">{title}</h2>
-      <p className="mx-auto mt-2 max-w-md text-sm text-[var(--muted)]">{body}</p>
+    <div className="empty-state rounded-2xl border border-dashed border-[var(--line)] px-5 py-10 text-center">
+      <h2 className="font-display text-2xl tracking-tight text-[var(--ink)]">
+        {title}
+      </h2>
+      <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-[var(--muted)]">
+        {body}
+      </p>
       {action ? <div className="mt-5">{action}</div> : null}
     </div>
   );

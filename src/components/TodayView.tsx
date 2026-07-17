@@ -27,13 +27,13 @@ import { PracticeHistoryStrip } from "./PracticeHistoryStrip";
 import { PracticeTimer } from "./PracticeTimer";
 import { ProgressHud } from "./ProgressHud";
 import { TeacherLane } from "./TeacherLane";
+import { TodayHero } from "./TodayHero";
 import {
   Badge,
   Button,
   EmptyState,
   Hint,
   LadderChain,
-  ProgressBar,
   Section,
 } from "./ui";
 
@@ -243,31 +243,15 @@ export function TodayView() {
 
   return (
     <div className="space-y-8">
-      <div className="space-y-2">
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
-          Сегодня
-        </p>
-        <h1 className="font-display text-3xl tracking-tight text-[var(--ink)]">
-          {dream.title}
-        </h1>
-        <LadderChain
-          dream={dream.title}
-          stage={stage?.title ?? "этап не выбран"}
-        />
-        {stage && progress ? (
-          <div className="space-y-1 pt-2">
-            <div className="flex justify-between text-xs text-[var(--muted)]">
-              <span>Рубежи этапа (доказательства роста)</span>
-              <span>
-                {progress.done}/{progress.total || "добавь на Этапе"}
-              </span>
-            </div>
-            <ProgressBar ratio={progress.ratio} />
-          </div>
-        ) : null}
-      </div>
+      <TodayHero
+        dreamTitle={dream.title}
+        stageTitle={stage?.title}
+        milestonesDone={progress?.done}
+        milestonesTotal={progress?.total}
+        milestoneRatio={progress?.ratio}
+      />
 
-      <ProgressHud />
+      <ProgressHud showPortrait={false} />
       {stage ? <TeacherLane stageId={stage.id} /> : null}
       <PathMap compact />
 
@@ -303,7 +287,7 @@ export function TodayView() {
         <>
           <Section
             title="На сегодня"
-            hint={`Ежедневные практики этапа «${stage.title}». XP после «Готово»: ${XP_HINTS.checkInScale}.`}
+            hint={`Ежедневные шаги этапа «${stage.title}». XP после «Готово»: ${XP_HINTS.checkInScale}.`}
           >
             {daily.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">

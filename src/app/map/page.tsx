@@ -17,17 +17,22 @@ export default function MapPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
-          Карта
-        </p>
-        <h1 className="font-display text-3xl tracking-tight text-[var(--ink)]">
-          Путь к мечте
-        </h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          От «где я сейчас» через этапы — к мечте. Всегда видно, на какой
-          ступени ты стоишь.
-        </p>
+      <div
+        className="path-map-page-hero relative overflow-hidden rounded-2xl border border-[var(--line)]"
+      >
+        <div className="today-hero__wash absolute inset-0 opacity-80" aria-hidden />
+        <div className="relative z-10 p-5 sm:p-6">
+          <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--accent)]">
+            Карта
+          </p>
+          <h1 className="mt-1 font-display text-3xl tracking-tight text-[var(--ink)]">
+            Путь к мечте
+          </h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            От «где я сейчас» через этапы — к мечте. Всегда видно, на какой
+            ступени ты стоишь.
+          </p>
+        </div>
       </div>
 
       {!dream ? (

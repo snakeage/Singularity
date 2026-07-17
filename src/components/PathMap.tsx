@@ -1,6 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import type { CSSProperties } from "react";
+import {
+  LOCALE_LABEL,
+  getSkin,
+  resolvePresentation,
+  resolveSkinId,
+} from "@/lib/characterSkins";
 import { getCharacterProgress } from "@/lib/gamification";
 import {
   getActiveStage,
@@ -37,11 +44,12 @@ export function PathMap({ compact = false }: { compact?: boolean }) {
   const character = getCharacterProgress(data);
   const allStagesDone =
     stages.length > 0 && stages.every((s) => s.status === "completed");
+  const skinId = resolveSkinId(data.profile);
+  const skin = getSkin(skinId);
+  const hasPortrait = resolvePresentation(data.profile) != null;
 
   const nodes: MapNode[] = [];
 
-  // Climb upward: dump → stages → dream (rendered bottom-to-top visually via column-reverse? 
-  // Easier: list top-to-bottom as ascent story: dump first, dream last)
   nodes.push({
     id: "dump",
     kind: "dump",
@@ -98,7 +106,6 @@ export function PathMap({ compact = false }: { compact?: boolean }) {
     href: "/dream",
   });
 
-  // If dump was marked here but we have active stage, dump is done
   if (active && nodes[0]) {
     nodes[0] = { ...nodes[0], state: "done" };
   }
@@ -109,94 +116,115 @@ export function PathMap({ compact = false }: { compact?: boolean }) {
       : "В пути";
 
   return (
-    <div className="panel-frame rounded-md p-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
-            Карта пути
-          </p>
-          <p className="font-display text-xl text-[var(--ink)]">
-            Старт → этапы → мечта
-          </p>
-          {!compact ? (
-            <p className="mt-1 text-xs text-[var(--muted)]">
-              Маршрут от сегодняшней реальности к цели. Ежедневные практики — на
-              экране «Сегодня», не на карте.
+    <div
+      className="path-map-shell overflow-hidden rounded-2xl border border-[var(--line)]"
+      style={
+        {
+          "--today-accent": skin.accent,
+          "--today-soft": skin.accentSoft,
+        } as CSSProperties
+      }
+    >
+      <div className="relative overflow-hidden border-b border-[var(--line)]">
+        <div className="today-hero__wash absolute inset-0" aria-hidden />
+        <div className="relative z-10 flex flex-wrap items-end justify-between gap-2 p-4 sm:p-5">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-[0.14em] text-[var(--accent)]">
+              Карта пути
+              {hasPortrait ? (
+                <span className="text-[var(--muted)]">
+                  {" "}
+                  · {LOCALE_LABEL[skin.locale]}
+                </span>
+              ) : null}
             </p>
-          ) : null}
+            <p className="mt-1 font-display text-xl text-[var(--ink)] sm:text-2xl">
+              Старт → этапы → мечта
+            </p>
+            {!compact ? (
+              <p className="mt-1 max-w-md text-xs text-[var(--muted)]">
+                Маршрут от сегодняшней реальности к цели. Дневные шаги — на
+                «Сегодня».
+              </p>
+            ) : null}
+          </div>
+          <Badge tone="metal">{hereLabel}</Badge>
         </div>
-        <Badge tone="metal">{hereLabel}</Badge>
       </div>
 
-      <ol className="path-map mt-5">
-        {nodes.map((node, index) => (
-          <li key={node.id} className="path-map__item">
-            {index < nodes.length - 1 ? (
-              <span className="path-map__rail" aria-hidden />
-            ) : null}
-            <div
-              className={`path-map__node path-map__node--${node.state} path-map__node--${node.kind}`}
-            >
-              <div className="path-map__marker" aria-hidden>
-                {node.state === "done"
-                  ? "✓"
-                  : node.state === "here"
-                    ? "●"
-                    : node.kind === "dream"
-                      ? "★"
-                      : index}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    tone={
-                      node.state === "here"
-                        ? "metal"
-                        : node.state === "done"
-                          ? "accent"
-                          : "muted"
-                    }
-                  >
-                    {node.state === "here"
-                      ? "ты здесь"
-                      : node.state === "done"
-                        ? "пройдено"
-                        : node.kind === "dream"
-                          ? "мечта"
-                          : "впереди"}
-                  </Badge>
-                  {node.kind === "dump" ? <Badge>начало</Badge> : null}
+      <div className="bg-[var(--panel)] p-4 sm:p-5">
+        <ol className="path-map">
+          {nodes.map((node, index) => (
+            <li key={node.id} className="path-map__item">
+              {index < nodes.length - 1 ? (
+                <span className="path-map__rail" aria-hidden />
+              ) : null}
+              <div
+                className={`path-map__node path-map__node--${node.state} path-map__node--${node.kind}`}
+              >
+                <div className="path-map__marker" aria-hidden>
+                  {node.state === "done"
+                    ? "✓"
+                    : node.state === "here"
+                      ? "●"
+                      : node.kind === "dream"
+                        ? "★"
+                        : index}
                 </div>
-                <p className="mt-1 font-medium text-[var(--ink)]">{node.title}</p>
-                <p className="text-xs text-[var(--muted)]">{node.subtitle}</p>
-                {node.progressRatio != null && node.progressLabel ? (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex justify-between text-[10px] text-[var(--faint)]">
-                      <span>{node.progressLabel}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Badge
+                      tone={
+                        node.state === "here"
+                          ? "metal"
+                          : node.state === "done"
+                            ? "accent"
+                            : "muted"
+                      }
+                    >
+                      {node.state === "here"
+                        ? "ты здесь"
+                        : node.state === "done"
+                          ? "пройдено"
+                          : node.kind === "dream"
+                            ? "мечта"
+                            : "впереди"}
+                    </Badge>
+                    {node.kind === "dump" ? <Badge>начало</Badge> : null}
+                  </div>
+                  <p className="mt-1 font-medium text-[var(--ink)]">
+                    {node.title}
+                  </p>
+                  <p className="text-xs text-[var(--muted)]">{node.subtitle}</p>
+                  {node.progressRatio != null && node.progressLabel ? (
+                    <div className="mt-2 space-y-1">
+                      <div className="flex justify-between text-[10px] text-[var(--faint)]">
+                        <span>{node.progressLabel}</span>
+                      </div>
+                      <ProgressBar ratio={node.progressRatio} />
                     </div>
-                    <ProgressBar ratio={node.progressRatio} />
-                  </div>
-                ) : null}
-                {node.href && node.state === "here" ? (
-                  <div className="mt-2">
-                    <Link href={node.href}>
-                      <Button type="button" variant="ghost">
-                        Открыть
-                      </Button>
-                    </Link>
-                  </div>
-                ) : null}
+                  ) : null}
+                  {node.href && node.state === "here" ? (
+                    <div className="mt-2">
+                      <Link href={node.href}>
+                        <Button type="button" variant="ghost">
+                          Открыть
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : null}
+                </div>
               </div>
-            </div>
-          </li>
-        ))}
-      </ol>
+            </li>
+          ))}
+        </ol>
 
-      {!compact && stages.length > 0 ? (
-        <p className="mt-4 text-xs text-[var(--faint)]">
-          Закрывай рубежи на текущем этапе — и двигайся по карте ближе к мечте.
-        </p>
-      ) : null}
+        {!compact && stages.length > 0 ? (
+          <p className="mt-4 text-xs text-[var(--faint)]">
+            Закрывай рубежи на текущем этапе — и двигайся по карте ближе к мечте.
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }

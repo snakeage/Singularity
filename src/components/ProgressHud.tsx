@@ -12,7 +12,14 @@ import { useApp } from "@/store/AppProvider";
 import { PortraitAvatar } from "./PortraitAvatar";
 import { ProgressBar } from "./ui";
 
-export function ProgressHud({ compact = false }: { compact?: boolean }) {
+export function ProgressHud({
+  compact = false,
+  showPortrait = true,
+}: {
+  compact?: boolean;
+  /** Hide when shell header already shows the portrait (avoid twin circles). */
+  showPortrait?: boolean;
+}) {
   const { ready, data } = useApp();
   if (!ready) return null;
 
@@ -27,9 +34,9 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <div className="hidden min-w-[170px] sm:block">
+      <div className="min-w-[140px] max-w-[200px] flex-1 sm:max-w-[220px] sm:flex-none">
         <div className="flex items-center gap-2">
-          {hasPortrait ? (
+          {showPortrait && hasPortrait ? (
             <PortraitAvatar
               presentation={presentation}
               skinId={skinId}
@@ -39,7 +46,13 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
           <div className="min-w-0 flex-1">
             <div className="flex items-baseline justify-between gap-2 text-xs text-[var(--muted)]">
               <span className="truncate">
-                {displayName} · ур. {progress.level}
+                {showPortrait ? (
+                  <>
+                    {displayName} · ур. {progress.level}
+                  </>
+                ) : (
+                  <>ур. {progress.level}</>
+                )}
               </span>
               <span className="shrink-0 text-[var(--metal)]">
                 {progress.xp} XP
@@ -58,7 +71,7 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
     <div className="panel-frame rounded-md p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-start gap-3">
-          {hasPortrait ? (
+          {showPortrait && hasPortrait ? (
             <PortraitAvatar
               presentation={presentation}
               skinId={skinId}
@@ -67,7 +80,7 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
           ) : null}
           <div>
             <p className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--metal)]">
-              Персонаж
+              {showPortrait ? "Персонаж" : "Прогресс"}
               {hasPortrait ? ` · ${skin.title}` : ""}
             </p>
             <p className="font-display text-2xl text-[var(--ink)]">
