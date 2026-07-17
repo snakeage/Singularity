@@ -38,6 +38,7 @@ npm run dev
 | [docs/requirements-mvp.md](docs/requirements-mvp.md) | User stories MVP |
 | [docs/data-model.md](docs/data-model.md) | Сущности и связи |
 | [docs/backlog.md](docs/backlog.md) | Идеи после MVP |
+| [docs/art-direction.md](docs/art-direction.md) | Визуальный канон moment-диалогов |
 | [docs/decisions/](docs/decisions/) | ADR |
 
 ## Хранение данных
