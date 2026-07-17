@@ -11,6 +11,7 @@ import { ToastHost } from "./ToastHost";
 
 const nav = [
   { href: "/", label: "Сегодня" },
+  { href: "/network", label: "Сеть" },
   { href: "/map", label: "Карта" },
   { href: "/dream", label: "Мечта" },
   { href: "/stage", label: "Этап" },

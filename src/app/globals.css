@@ -520,3 +520,23 @@ code {
   }
 }
 
+
+.network-node[data-state="certified"] {
+  border-left: 3px solid var(--level-strong);
+}
+.network-node[data-state="upgraded"] {
+  border-left: 3px solid var(--accent);
+}
+.network-node[data-state="holding"] {
+  border-left: 3px solid var(--metal);
+}
+.network-node[data-state="drilling"] {
+  border-left: 3px solid var(--level-partial);
+}
+.network-node[data-state="installed"] {
+  border-left: 3px solid color-mix(in srgb, var(--accent) 55%, var(--line));
+}
+.network-node[data-state="slot"] {
+  border-left: 3px solid var(--line);
+  border-style: dashed;
+}
