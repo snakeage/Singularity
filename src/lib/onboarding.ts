@@ -1,4 +1,4 @@
-/** v2 = character creation (presentation → skin → name → dream). */
+/** v2 = character creation (skin+gender → name → dream). */
 export const ONBOARDING_KEY = "singularity.onboarding.v2";
 
 export function isOnboardingDone(): boolean {

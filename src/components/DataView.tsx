@@ -175,32 +175,15 @@ export function DataView() {
           onSubmit={onSavePortrait}
           className="space-y-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-4"
         >
-          <Field label="Представление">
-            <div className="grid grid-cols-2 gap-2">
-              {(["male", "female"] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPresentation(p)}
-                  className={`rounded-md border px-3 py-2 text-sm transition ${
-                    presentation === p
-                      ? "border-[var(--accent)] bg-[var(--wash)]"
-                      : "border-[var(--line)] bg-[var(--panel-2)]/40"
-                  }`}
-                  aria-pressed={presentation === p}
-                >
-                  {PRESENTATION_LABEL[p]}
-                </button>
-              ))}
-            </div>
-            <FieldHint>
-              После смены пола показывается свой каталог портретов.
-            </FieldHint>
-          </Field>
           <Field label="Портрет">
+            <FieldHint>
+              Пол переключает каталог. Скин — только внешний вид, без бонусов к
+              XP.
+            </FieldHint>
             <SkinPicker
               presentation={presentation}
               skinId={skinId}
+              onPresentationChange={setPresentation}
               onSelect={setSkinId}
             />
           </Field>
