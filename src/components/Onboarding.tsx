@@ -1,31 +1,33 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  DEFAULT_PRESENTATION,
+  DEFAULT_SKIN_ID,
+  PRESENTATION_LABEL,
+  isSkinArchetypeId,
+  type Presentation,
+  type SkinArchetypeId,
+} from "@/lib/characterSkins";
 import {
   completeOnboarding,
   isOnboardingDone,
 } from "@/lib/onboarding";
-import { Button } from "./ui";
+import { useApp } from "@/store/AppProvider";
+import { PortraitAvatar } from "./PortraitAvatar";
+import { SkinPicker } from "./SkinPicker";
+import { Button, Field, FieldHint, Input } from "./ui";
 
-const steps = [
-  {
-    title: "Singularity — трекер цели",
-    body: "Помогает разложить большую мечту на этапы и каждый день делать маленькие шаги, не теряя курс.",
-  },
-  {
-    title: "1. Мечта и «где я сейчас»",
-    body: "Опиши цель: что, зачем, какой результат. Затем честно зафиксируй старт — навыки, ресурсы и что мешает.",
-  },
-  {
-    title: "2. Этапы пути",
-    body: "Разбей мечту на 2–5 этапов. Работай только на одном активном — так цель не кажется бесконечной.",
-  },
-  {
-    title: "3. Практики и рубежи",
-    body: "Практика — ежедневное действие на «Сегодня». Рубеж — доказательство, что этап можно закрывать. Препятствия и планы на срыв — внизу экрана «Мечта».",
-  },
-] as const;
+type Step = "presentation" | "skin" | "name" | "dream" | "done";
+
+const STEP_ORDER: Step[] = [
+  "presentation",
+  "skin",
+  "name",
+  "dream",
+  "done",
+];
 
 type Props = {
   open: boolean;
@@ -33,18 +35,64 @@ type Props = {
 };
 
 export function Onboarding({ open, onClose }: Props) {
-  const [step, setStep] = useState(0);
+  const router = useRouter();
+  const { createDream, updateProfile, data } = useApp();
+  const [step, setStep] = useState<Step>("presentation");
+  const [presentation, setPresentation] = useState<Presentation>(
+    DEFAULT_PRESENTATION,
+  );
+  const [skinId, setSkinId] = useState<SkinArchetypeId>(DEFAULT_SKIN_ID);
+  const [name, setName] = useState("");
+  const [dreamTitle, setDreamTitle] = useState("");
 
   useEffect(() => {
-    if (open) setStep(0);
-  }, [open]);
+    if (!open) return;
+    setStep("presentation");
+    setPresentation(
+      data.profile?.presentation === "female"
+        ? "female"
+        : DEFAULT_PRESENTATION,
+    );
+    setSkinId(
+      isSkinArchetypeId(data.profile?.skinId)
+        ? data.profile.skinId
+        : DEFAULT_SKIN_ID,
+    );
+    setName(data.profile?.name ?? "");
+    setDreamTitle("");
+  }, [
+    open,
+    data.profile?.presentation,
+    data.profile?.skinId,
+    data.profile?.name,
+  ]);
 
   if (!open) return null;
 
-  const current = steps[step];
-  const isLast = step === steps.length - 1;
+  const stepIndex = STEP_ORDER.indexOf(step);
+  const total = STEP_ORDER.length;
 
-  function finish() {
+  function finish(goTo: "/" | "/dream") {
+    updateProfile({
+      presentation,
+      skinId,
+      name: name.trim(),
+    });
+    const title = dreamTitle.trim();
+    if (title) {
+      createDream({
+        title,
+        why: "",
+        outcomeVision: "",
+        horizon: "",
+      });
+    }
+    completeOnboarding();
+    onClose();
+    router.push(goTo);
+  }
+
+  function skipAll() {
     completeOnboarding();
     onClose();
   }
@@ -58,54 +106,199 @@ export function Onboarding({ open, onClose }: Props) {
     >
       <div className="panel-frame w-full max-w-lg rounded-lg p-5 shadow-lg">
         <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
-          Как начать · шаг {step + 1} из {steps.length}
-        </p>
-        <h2
-          id="onboarding-title"
-          className="mt-2 font-display text-2xl tracking-tight text-[var(--ink)]"
-        >
-          {current.title}
-        </h2>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
-          {current.body}
+          Создание персонажа · шаг {stepIndex + 1} из {total}
         </p>
 
+        {step === "presentation" ? (
+          <>
+            <h2
+              id="onboarding-title"
+              className="mt-2 font-display text-2xl tracking-tight text-[var(--ink)]"
+            >
+              Кто ты на этом пути?
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
+              Выбери представление — откроется свой каталог портретов. Скин не
+              даёт бонусов, только внешний вид.
+            </p>
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              {(["male", "female"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPresentation(p)}
+                  className={`rounded-md border p-4 text-center transition ${
+                    presentation === p
+                      ? "border-[var(--accent)] bg-[var(--wash)]"
+                      : "border-[var(--line)] bg-[var(--panel)]"
+                  }`}
+                  aria-pressed={presentation === p}
+                >
+                  <PortraitAvatar
+                    presentation={p}
+                    skinId={skinId}
+                    size="md"
+                    className="mx-auto"
+                  />
+                  <span className="mt-2 block font-medium text-[var(--ink)]">
+                    {PRESENTATION_LABEL[p]}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        {step === "skin" ? (
+          <>
+            <h2
+              id="onboarding-title"
+              className="mt-2 font-display text-2xl tracking-tight text-[var(--ink)]"
+            >
+              Портрет · {PRESENTATION_LABEL[presentation]}
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
+              Архетип пути — дух роли, не герой из книги. Все варианты открыты
+              сразу.
+            </p>
+            <div className="mt-4 max-h-[50vh] overflow-y-auto">
+              <SkinPicker
+                presentation={presentation}
+                skinId={skinId}
+                onSelect={setSkinId}
+              />
+            </div>
+          </>
+        ) : null}
+
+        {step === "name" ? (
+          <>
+            <h2
+              id="onboarding-title"
+              className="mt-2 font-display text-2xl tracking-tight text-[var(--ink)]"
+            >
+              Как тебя зовут?
+            </h2>
+            <div className="mt-4 flex items-center gap-3">
+              <PortraitAvatar
+                presentation={presentation}
+                skinId={skinId}
+                size="lg"
+              />
+              <Field label="Имя на пути">
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Например: Алекс, Ника, Путник"
+                  maxLength={40}
+                  autoFocus
+                />
+                <FieldHint>Без имени в интерфейсе будет «Путник».</FieldHint>
+              </Field>
+            </div>
+          </>
+        ) : null}
+
+        {step === "dream" ? (
+          <>
+            <h2
+              id="onboarding-title"
+              className="mt-2 font-display text-2xl tracking-tight text-[var(--ink)]"
+            >
+              Мечта одной фразой
+            </h2>
+            <p className="mt-3 text-sm leading-relaxed text-[var(--muted)]">
+              Можно пропустить и описать позже на экране «Мечта».
+            </p>
+            <div className="mt-4">
+              <Field label="Куда идёшь">
+                <Input
+                  value={dreamTitle}
+                  onChange={(e) => setDreamTitle(e.target.value)}
+                  placeholder="Например: стать сильным разработчиком"
+                  maxLength={120}
+                  autoFocus
+                />
+              </Field>
+            </div>
+          </>
+        ) : null}
+
+        {step === "done" ? (
+          <>
+            <h2
+              id="onboarding-title"
+              className="mt-2 font-display text-2xl tracking-tight text-[var(--ink)]"
+            >
+              Готово к пути
+            </h2>
+            <div className="mt-4 flex items-center gap-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-3">
+              <PortraitAvatar
+                presentation={presentation}
+                skinId={skinId}
+                size="lg"
+              />
+              <div>
+                <p className="font-display text-xl text-[var(--ink)]">
+                  {name.trim() || "Путник"}
+                </p>
+                <p className="text-sm text-[var(--muted)]">
+                  {dreamTitle.trim()
+                    ? `Мечта: ${dreamTitle.trim()}`
+                    : "Мечту можно задать на экране «Мечта»"}
+                </p>
+              </div>
+            </div>
+            <p className="mt-3 text-sm text-[var(--muted)]">
+              Капсула — на «Сегодня». Сеть этапа — узлы практик. Курс не
+              отклоняется.
+            </p>
+          </>
+        ) : null}
+
         <div className="mt-4 flex gap-1.5" aria-hidden>
-          {steps.map((_, i) => (
+          {STEP_ORDER.map((s, i) => (
             <span
-              key={i}
+              key={s}
               className={`h-1.5 flex-1 rounded-full ${
-                i <= step ? "bg-[var(--accent)]" : "bg-[var(--panel-2)]"
+                i <= stepIndex ? "bg-[var(--accent)]" : "bg-[var(--panel-2)]"
               }`}
             />
           ))}
         </div>
 
         <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-          <Button type="button" variant="ghost" onClick={finish}>
+          <Button type="button" variant="ghost" onClick={skipAll}>
             Пропустить
           </Button>
           <div className="flex flex-wrap gap-2">
-            {step > 0 ? (
+            {stepIndex > 0 ? (
               <Button
                 type="button"
                 variant="ghost"
-                onClick={() => setStep((s) => s - 1)}
+                onClick={() => setStep(STEP_ORDER[stepIndex - 1]!)}
               >
                 Назад
               </Button>
             ) : null}
-            {isLast ? (
+            {step === "done" ? (
               <>
-                <Button type="button" variant="ghost" onClick={finish}>
-                  Понятно
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => finish("/")}
+                >
+                  На Сегодня
                 </Button>
-                <Link href="/dream" onClick={finish}>
-                  <Button type="button">Создать мечту</Button>
-                </Link>
+                <Button type="button" onClick={() => finish("/dream")}>
+                  К мечте
+                </Button>
               </>
             ) : (
-              <Button type="button" onClick={() => setStep((s) => s + 1)}>
+              <Button
+                type="button"
+                onClick={() => setStep(STEP_ORDER[stepIndex + 1]!)}
+              >
                 Дальше
               </Button>
             )}

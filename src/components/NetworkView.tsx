@@ -1,6 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import {
+  DEFAULT_PRESENTATION,
+  getSkin,
+  resolvePresentation,
+  resolveSkinId,
+} from "@/lib/characterSkins";
 import { LEVEL_LABEL } from "@/lib/practiceLevels";
 import {
   getStageNetwork,
@@ -8,6 +14,7 @@ import {
   type NetworkNodeState,
 } from "@/lib/networkNodes";
 import { useApp } from "@/store/AppProvider";
+import { PortraitAvatar } from "./PortraitAvatar";
 import {
   Badge,
   Button,
@@ -58,19 +65,34 @@ export function NetworkView() {
     );
   }
 
+  const presentation =
+    resolvePresentation(data.profile) ?? DEFAULT_PRESENTATION;
+  const skinId = resolveSkinId(data.profile);
+  const hasPortrait = resolvePresentation(data.profile) != null;
+
   return (
     <div className="space-y-10">
-      <div>
-        <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
-          Сеть
-        </p>
-        <h1 className="font-display text-3xl tracking-tight text-[var(--ink)]">
-          {network.channelLabel}
-        </h1>
-        <p className="mt-1 text-sm text-[var(--muted)]">
-          Этап «{network.stageTitle}» · мечта «{network.dreamTitle}»
-          {network.teacherName ? ` · наставник ${network.teacherName}` : ""}
-        </p>
+      <div className="flex flex-wrap items-start gap-4">
+        {hasPortrait ? (
+          <PortraitAvatar
+            presentation={presentation}
+            skinId={skinId}
+            size="lg"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--accent)]">
+            Сеть
+            {hasPortrait ? ` · ${getSkin(skinId).title}` : ""}
+          </p>
+          <h1 className="font-display text-3xl tracking-tight text-[var(--ink)]">
+            {network.channelLabel}
+          </h1>
+          <p className="mt-1 text-sm text-[var(--muted)]">
+            Этап «{network.stageTitle}» · мечта «{network.dreamTitle}»
+            {network.teacherName ? ` · наставник ${network.teacherName}` : ""}
+          </p>
+        </div>
       </div>
 
       <Hint title="Как читать узлы">

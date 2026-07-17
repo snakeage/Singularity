@@ -1,3 +1,4 @@
+import { normalizePortraitFields } from "./characterSkins";
 import { normalizeReminders } from "./reminders";
 import type { AppData } from "./types";
 import { EMPTY_DATA } from "./types";
@@ -7,6 +8,16 @@ export type BackupFile = {
   exportedAt: string;
   data: AppData;
 };
+
+function normalizeProfile(profile: AppData["profile"] | undefined) {
+  const portrait = normalizePortraitFields(profile ?? {});
+  return {
+    name: profile?.name?.trim() ?? "",
+    ...portrait,
+    reminders: normalizeReminders(profile?.reminders),
+    strictLadder: Boolean(profile?.strictLadder),
+  };
+}
 
 export function buildBackup(data: AppData): BackupFile {
   return {
@@ -29,11 +40,7 @@ export function parseBackup(raw: string): AppData {
     return {
       ...EMPTY_DATA,
       ...parsed.data,
-      profile: {
-        name: parsed.data.profile?.name?.trim() ?? "",
-        reminders: normalizeReminders(parsed.data.profile?.reminders),
-        strictLadder: Boolean(parsed.data.profile?.strictLadder),
-      },
+      profile: normalizeProfile(parsed.data.profile),
       practiceTimers: Array.isArray(parsed.data.practiceTimers)
         ? parsed.data.practiceTimers
         : [],
@@ -52,11 +59,7 @@ export function parseBackup(raw: string): AppData {
     return {
       ...EMPTY_DATA,
       ...data,
-      profile: {
-        name: data.profile?.name?.trim() ?? "",
-        reminders: normalizeReminders(data.profile?.reminders),
-        strictLadder: Boolean(data.profile?.strictLadder),
-      },
+      profile: normalizeProfile(data.profile),
       practiceTimers: Array.isArray(data.practiceTimers)
         ? data.practiceTimers
         : [],

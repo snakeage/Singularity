@@ -1,6 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  DEFAULT_PRESENTATION,
+  DEFAULT_SKIN_ID,
+  PRESENTATION_LABEL,
+  getSkin,
+  isSkinArchetypeId,
+  resolvePresentation,
+  resolveSkinId,
+  type Presentation,
+  type SkinArchetypeId,
+} from "@/lib/characterSkins";
 import { resetOnboarding } from "@/lib/onboarding";
 import {
   DEFAULT_REMINDERS,
@@ -8,6 +19,8 @@ import {
   requestNotificationPermission,
 } from "@/lib/reminders";
 import { useApp } from "@/store/AppProvider";
+import { PortraitAvatar } from "./PortraitAvatar";
+import { SkinPicker } from "./SkinPicker";
 import { Badge, Button, Field, FieldHint, Input, Section } from "./ui";
 
 export function DataView() {
@@ -17,22 +30,38 @@ export function DataView() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [name, setName] = useState("");
+  const [presentation, setPresentation] =
+    useState<Presentation>(DEFAULT_PRESENTATION);
+  const [skinId, setSkinId] = useState<SkinArchetypeId>(DEFAULT_SKIN_ID);
   const [remindOn, setRemindOn] = useState(false);
   const [remindTime, setRemindTime] = useState(DEFAULT_REMINDERS.time);
 
   useEffect(() => {
     setName(data.profile?.name ?? "");
+    setPresentation(resolvePresentation(data.profile) ?? DEFAULT_PRESENTATION);
+    setSkinId(resolveSkinId(data.profile));
     const reminders = normalizeReminders(data.profile?.reminders);
     setRemindOn(reminders.enabled);
     setRemindTime(reminders.time);
-  }, [data.profile?.name, data.profile?.reminders]);
+  }, [
+    data.profile?.name,
+    data.profile?.presentation,
+    data.profile?.skinId,
+    data.profile?.reminders,
+  ]);
 
   if (!ready) {
     return <p className="text-sm text-[var(--muted)]">Загрузка…</p>;
   }
 
   const savedReminders = normalizeReminders(data.profile?.reminders);
+  const savedPresentation = resolvePresentation(data.profile);
+  const savedSkinId = resolveSkinId(data.profile);
   const nameDirty = name.trim() !== (data.profile?.name ?? "").trim();
+  const portraitDirty =
+    presentation !== (savedPresentation ?? DEFAULT_PRESENTATION) ||
+    skinId !== savedSkinId ||
+    savedPresentation == null;
   const remindDirty =
     remindOn !== savedReminders.enabled || remindTime !== savedReminders.time;
 
@@ -40,6 +69,14 @@ export function DataView() {
     e.preventDefault();
     updateProfile({ name });
     setMessage("Имя персонажа сохранено");
+    setError(null);
+  }
+
+  function onSavePortrait(e: FormEvent) {
+    e.preventDefault();
+    if (!isSkinArchetypeId(skinId)) return;
+    updateProfile({ presentation, skinId });
+    setMessage("Портрет сохранён");
     setError(null);
   }
 
@@ -91,12 +128,27 @@ export function DataView() {
 
       <Section
         title="Персонаж"
-        hint="Лёгкая прокачка: имя твоё, титул растёт от XP и этапов."
+        hint="Имя и портрет — косметика. Титул растёт от XP и этапов; скин не даёт бонусов."
       >
         <form
           onSubmit={onSaveName}
           className="space-y-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-4"
         >
+          <div className="flex items-center gap-3">
+            <PortraitAvatar
+              presentation={presentation}
+              skinId={skinId}
+              size="lg"
+            />
+            <div>
+              <p className="font-medium text-[var(--ink)]">
+                {name.trim() || "Путник"}
+              </p>
+              <p className="text-xs text-[var(--muted)]">
+                {PRESENTATION_LABEL[presentation]} · {getSkin(skinId).title}
+              </p>
+            </div>
+          </div>
           <Field label="Как тебя зовут на этом пути">
             <Input
               value={name}
@@ -115,6 +167,48 @@ export function DataView() {
               <Badge tone="accent">Имя сохранено</Badge>
             ) : (
               <Badge>Имя ещё не задано</Badge>
+            )}
+          </div>
+        </form>
+
+        <form
+          onSubmit={onSavePortrait}
+          className="space-y-3 rounded-md border border-[var(--line)] bg-[var(--panel)] p-4"
+        >
+          <Field label="Представление">
+            <div className="grid grid-cols-2 gap-2">
+              {(["male", "female"] as const).map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setPresentation(p)}
+                  className={`rounded-md border px-3 py-2 text-sm transition ${
+                    presentation === p
+                      ? "border-[var(--accent)] bg-[var(--wash)]"
+                      : "border-[var(--line)] bg-[var(--panel-2)]/40"
+                  }`}
+                  aria-pressed={presentation === p}
+                >
+                  {PRESENTATION_LABEL[p]}
+                </button>
+              ))}
+            </div>
+            <FieldHint>
+              После смены пола показывается свой каталог портретов.
+            </FieldHint>
+          </Field>
+          <Field label="Портрет">
+            <SkinPicker
+              presentation={presentation}
+              skinId={skinId}
+              onSelect={setSkinId}
+            />
+          </Field>
+          <div className="flex flex-wrap items-center gap-3">
+            {portraitDirty ? (
+              <Button type="submit">Сохранить портрет</Button>
+            ) : (
+              <Badge tone="accent">Портрет сохранён</Badge>
             )}
           </div>
         </form>
@@ -257,7 +351,10 @@ export function DataView() {
         {error ? <p className="text-sm text-red-700">{error}</p> : null}
       </Section>
 
-      <Section title="Обучение" hint="Короткий гид: мечта → этапы → практики.">
+      <Section
+        title="Обучение"
+        hint="Снова открыть мастер создания персонажа (пол → портрет → имя → мечта)."
+      >
         <Button
           type="button"
           variant="ghost"

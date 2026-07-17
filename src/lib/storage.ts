@@ -1,3 +1,4 @@
+import { normalizePortraitFields } from "./characterSkins";
 import { normalizeReminders } from "./reminders";
 import { EMPTY_DATA, type AppData } from "./types";
 
@@ -12,11 +13,13 @@ export function loadData(): AppData {
     if (parsed?.version !== 1 || !Array.isArray(parsed.dreams)) {
       return EMPTY_DATA;
     }
+    const portrait = normalizePortraitFields(parsed.profile ?? {});
     return {
       ...EMPTY_DATA,
       ...parsed,
       profile: {
         name: parsed.profile?.name?.trim() ?? "",
+        ...portrait,
         reminders: normalizeReminders(parsed.profile?.reminders),
         strictLadder: Boolean(parsed.profile?.strictLadder),
       },

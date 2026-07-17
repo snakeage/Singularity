@@ -179,6 +179,8 @@ type AppContextValue = {
   settlePracticeTimers: () => void;
   updateProfile: (patch: {
     name?: string;
+    presentation?: "male" | "female";
+    skinId?: string;
     reminders?: Reminders;
     strictLadder?: boolean;
   }) => void;
@@ -1126,6 +1128,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
               patch.name !== undefined
                 ? patch.name.trim()
                 : (prev.profile?.name ?? ""),
+            presentation:
+              patch.presentation !== undefined
+                ? patch.presentation
+                : prev.profile?.presentation,
+            skinId:
+              patch.skinId !== undefined
+                ? patch.skinId
+                : prev.profile?.skinId,
             reminders:
               patch.reminders !== undefined
                 ? normalizeReminders(patch.reminders)

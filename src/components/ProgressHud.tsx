@@ -1,7 +1,15 @@
 "use client";
 
+import {
+  DEFAULT_PRESENTATION,
+  DEFAULT_SKIN_ID,
+  getSkin,
+  resolvePresentation,
+  resolveSkinId,
+} from "@/lib/characterSkins";
 import { getCharacterProgress, XP_HINTS } from "@/lib/gamification";
 import { useApp } from "@/store/AppProvider";
+import { PortraitAvatar } from "./PortraitAvatar";
 import { ProgressBar } from "./ui";
 
 export function ProgressHud({ compact = false }: { compact?: boolean }) {
@@ -12,18 +20,35 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
   if (!progress) return null;
 
   const displayName = progress.name || "Путник";
+  const presentation = resolvePresentation(data.profile) ?? DEFAULT_PRESENTATION;
+  const skinId = resolveSkinId(data.profile);
+  const skin = getSkin(skinId);
+  const hasPortrait = resolvePresentation(data.profile) != null;
 
   if (compact) {
     return (
       <div className="hidden min-w-[170px] sm:block">
-        <div className="flex items-baseline justify-between gap-2 text-xs text-[var(--muted)]">
-          <span>
-            {displayName} · ур. {progress.level}
-          </span>
-          <span className="text-[var(--metal)]">{progress.xp} XP</span>
-        </div>
-        <div className="mt-1">
-          <ProgressBar ratio={progress.levelProgress} />
+        <div className="flex items-center gap-2">
+          {hasPortrait ? (
+            <PortraitAvatar
+              presentation={presentation}
+              skinId={skinId}
+              size="sm"
+            />
+          ) : null}
+          <div className="min-w-0 flex-1">
+            <div className="flex items-baseline justify-between gap-2 text-xs text-[var(--muted)]">
+              <span className="truncate">
+                {displayName} · ур. {progress.level}
+              </span>
+              <span className="shrink-0 text-[var(--metal)]">
+                {progress.xp} XP
+              </span>
+            </div>
+            <div className="mt-1">
+              <ProgressBar ratio={progress.levelProgress} />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -32,16 +57,26 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
   return (
     <div className="panel-frame rounded-md p-4">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--metal)]">
-            Персонаж
-          </p>
-          <p className="font-display text-2xl text-[var(--ink)]">
-            {displayName}
-          </p>
-          <p className="text-sm text-[var(--muted)]">
-            Уровень {progress.level} · {progress.title}
-          </p>
+        <div className="flex items-start gap-3">
+          {hasPortrait ? (
+            <PortraitAvatar
+              presentation={presentation}
+              skinId={skinId}
+              size="lg"
+            />
+          ) : null}
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.1em] text-[var(--metal)]">
+              Персонаж
+              {hasPortrait ? ` · ${skin.title}` : ""}
+            </p>
+            <p className="font-display text-2xl text-[var(--ink)]">
+              {displayName}
+            </p>
+            <p className="text-sm text-[var(--muted)]">
+              Уровень {progress.level} · {progress.title}
+            </p>
+          </div>
         </div>
         <p className="text-sm text-[var(--metal)]">{progress.xp} XP</p>
       </div>

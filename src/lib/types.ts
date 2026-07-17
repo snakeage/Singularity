@@ -186,6 +186,10 @@ export type Reminders = {
 
 export type Profile = {
   name: string;
+  /** Which gendered portrait catalog to use. */
+  presentation?: "male" | "female";
+  /** Archetype portrait id (same ids for both catalogs; art differs). */
+  skinId?: string;
   reminders?: Reminders;
   /** Block activating a stage while earlier ones are unfinished. */
   strictLadder?: boolean;
