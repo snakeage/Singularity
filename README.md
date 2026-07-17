@@ -34,6 +34,7 @@ npm run dev
 | --- | --- |
 | [docs/vision.md](docs/vision.md) | Зачем проект, для кого, границы |
 | [docs/methodology.md](docs/methodology.md) | Лестница Ника + методики |
+| [docs/mythology-network.md](docs/mythology-network.md) | Сеть, базы, капсула — продуктовый канон |
 | [docs/glossary.md](docs/glossary.md) | Термины |
 | [docs/requirements-mvp.md](docs/requirements-mvp.md) | User stories MVP |
 | [docs/data-model.md](docs/data-model.md) | Сущности и связи |
