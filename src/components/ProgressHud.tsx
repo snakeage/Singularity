@@ -78,8 +78,9 @@ export function ProgressHud({ compact = false }: { compact?: boolean }) {
 
       <p className="mt-3 text-xs text-[var(--faint)]">
         Серия — дни подряд с «нормой» или «сильно» (не частично). Практика{" "}
-        {XP_HINTS.checkIn} · рубеж {XP_HINTS.milestone} · этап{" "}
-        {XP_HINTS.stage} · обзор {XP_HINTS.review}.
+        {XP_HINTS.checkInScale} · рубеж {XP_HINTS.milestone} · этап{" "}
+        {XP_HINTS.stage} · обзор {XP_HINTS.review}. XP только после закрытия
+        практики, не пока идёт таймер.
       </p>
     </div>
   );

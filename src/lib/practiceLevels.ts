@@ -285,16 +285,18 @@ export function motivationCopy(
   status: CheckInStatus,
   minutes: number,
   min?: number,
+  xp?: number,
 ): string {
+  const xpBit = xp && xp > 0 ? ` · +${xp} XP` : "";
   if (status === "strong") {
     return min
-      ? `Сильный заход · ${minutes}/${min} мин`
-      : `Сильный заход · ${minutes} мин`;
+      ? `Сильный заход · ${minutes}/${min} мин${xpBit}`
+      : `Сильный заход · ${minutes} мин${xpBit}`;
   }
   if (status === "done") {
     return min
-      ? `Норма закрыта · ${minutes}/${min} мин`
-      : `Сделано · ${minutes} мин`;
+      ? `Норма закрыта · ${minutes}/${min} мин${xpBit}`
+      : `Сделано · ${minutes} мин${xpBit}`;
   }
   if (status === "partial") {
     return min

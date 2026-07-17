@@ -17,6 +17,7 @@ import {
   weekStartISO,
 } from "@/lib/dates";
 import { createId } from "@/lib/id";
+import { xpForCheckInStatus } from "@/lib/gamification";
 import { normalizeReminders } from "@/lib/reminders";
 import {
   motivationCopy,
@@ -1033,7 +1034,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
         }),
       );
 
-      pushToast(motivationCopy(status, minutesSpent, minMinutes));
+      pushToast(
+        motivationCopy(
+          status,
+          minutesSpent,
+          minMinutes,
+          xpForCheckInStatus(status),
+        ),
+      );
       return { minutesSpent, status };
     }, []);
 
@@ -1077,7 +1085,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       pushToast(
         result.status === "partial"
           ? "Частично без таймера — минимум не подтверждён временем"
-          : "Сделано без таймера",
+          : `Сделано без таймера · +${xpForCheckInStatus(result.status)} XP`,
       );
       return result.status;
     }, []);

@@ -6,12 +6,24 @@ import {
   getStagesForDream,
   stageProgress,
 } from "./selectors";
-import type { AppData } from "./types";
+import type { AppData, CheckInStatus } from "./types";
 
-const XP_CHECKIN = 10;
+/** XP only after closing a practice (Готово / Закрыть) — not while the timer runs. */
+const XP_NORMA = 10;
+/** Strong = norma + overtime cap. */
+const XP_STRONG_BONUS = 5;
+const XP_STRONG = XP_NORMA + XP_STRONG_BONUS;
 const XP_MILESTONE = 25;
 const XP_STAGE = 50;
 const XP_REVIEW = 15;
+
+export function xpForCheckInStatus(
+  status: CheckInStatus | null | undefined,
+): number {
+  if (status === "strong") return XP_STRONG;
+  if (status === "done") return XP_NORMA;
+  return 0;
+}
 
 export type CharacterProgress = {
   name: string;
@@ -85,9 +97,14 @@ export function getCharacterProgress(data: AppData): CharacterProgress | null {
   const active = getActiveStage(data, dream.id);
   const stageIds = new Set(stages.map((s) => s.id));
 
-  const checkInsDone = data.checkIns.filter(
-    (c) => c.practiceId && isFullCredit(c.status),
+  const practiceCheckIns = data.checkIns.filter((c) => c.practiceId);
+  const checkInsDone = practiceCheckIns.filter((c) =>
+    isFullCredit(c.status),
   ).length;
+  const xpFromCheckIns = practiceCheckIns.reduce(
+    (sum, c) => sum + xpForCheckInStatus(c.status),
+    0,
+  );
   const milestonesDone = data.milestones.filter(
     (m) => m.status === "done" && stageIds.has(m.stageId),
   ).length;
@@ -95,7 +112,7 @@ export function getCharacterProgress(data: AppData): CharacterProgress | null {
   const reviewsDone = data.reviews.filter((r) => r.dreamId === dream.id).length;
 
   const xp =
-    checkInsDone * XP_CHECKIN +
+    xpFromCheckIns +
     milestonesDone * XP_MILESTONE +
     stagesDone * XP_STAGE +
     reviewsDone * XP_REVIEW;
@@ -126,7 +143,10 @@ export function getCharacterProgress(data: AppData): CharacterProgress | null {
 }
 
 export const XP_HINTS = {
-  checkIn: `+${XP_CHECKIN} XP`,
+  checkIn: `+${XP_NORMA} XP`,
+  checkInStrong: `+${XP_STRONG} XP`,
+  /** Short legend for HUD. */
+  checkInScale: `норма +${XP_NORMA} · сильно +${XP_STRONG}`,
   milestone: `+${XP_MILESTONE} XP`,
   stage: `+${XP_STAGE} XP`,
   review: `+${XP_REVIEW} XP`,

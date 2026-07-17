@@ -6,7 +6,7 @@ import {
   courseCheckTone,
 } from "@/lib/courseCheck";
 import { formatWeekLabel, weekStartISO } from "@/lib/dates";
-import { XP_HINTS } from "@/lib/gamification";
+import { XP_HINTS, xpForCheckInStatus } from "@/lib/gamification";
 import {
   isFullCredit,
   LEVEL_LABEL,
@@ -143,7 +143,7 @@ function PracticeCard({
               {checkIn.minutesSpent != null
                 ? ` · ${checkIn.minutesSpent} мин`
                 : ""}{" "}
-              · {XP_HINTS.checkIn}
+              · +{xpForCheckInStatus(checkIn.status)} XP
             </Button>
             <Button type="button" variant="ghost" onClick={onClear}>
               Отменить
@@ -303,7 +303,7 @@ export function TodayView() {
         <>
           <Section
             title="На сегодня"
-            hint={`Ежедневные практики этапа «${stage.title}». Норма/сильно даёт ${XP_HINTS.checkIn}.`}
+            hint={`Ежедневные практики этапа «${stage.title}». XP после «Готово»: ${XP_HINTS.checkInScale}.`}
           >
             {daily.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">
