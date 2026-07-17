@@ -1,6 +1,8 @@
 "use client";
 
 import Image from "next/image";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   MOMENT_IMAGE,
   momentHeading,
@@ -27,7 +29,10 @@ export function PracticeMomentDialog({
   choices: MomentChoice[];
   onChoose: (id: string) => void;
 }) {
-  return (
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const dialog = (
     <div
       className="moment-dialog-backdrop"
       role="dialog"
@@ -69,4 +74,7 @@ export function PracticeMomentDialog({
       </div>
     </div>
   );
+
+  if (!mounted) return null;
+  return createPortal(dialog, document.body);
 }

@@ -24,7 +24,6 @@ import { useApp } from "@/store/AppProvider";
 import { EffortScaleLegend } from "./EffortScaleLegend";
 import { PathMap } from "./PathMap";
 import { PracticeHistoryStrip } from "./PracticeHistoryStrip";
-import { PracticeTimer } from "./PracticeTimer";
 import { ProgressHud } from "./ProgressHud";
 import { TeacherLane } from "./TeacherLane";
 import { TodayHero } from "./TodayHero";
@@ -68,6 +67,8 @@ function PracticeCard({
   dreamTitle,
   stageTitle,
   checkIn,
+  sessionLive,
+  sessionPaused,
   onClaimWithoutTimer,
   onSkip,
   onClear,
@@ -76,6 +77,8 @@ function PracticeCard({
   dreamTitle: string;
   stageTitle: string;
   checkIn?: CheckIn;
+  sessionLive?: boolean;
+  sessionPaused?: boolean;
   onClaimWithoutTimer: () => void;
   onSkip: () => void;
   onClear: () => void;
@@ -88,6 +91,10 @@ function PracticeCard({
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <Badge tone="metal">Практика</Badge>
         <Badge>{isWeekly ? "на неделю" : "на сегодня"}</Badge>
+        {sessionLive ? <Badge tone="accent">сессия идёт</Badge> : null}
+        {sessionPaused && !sessionLive ? (
+          <Badge tone="partial">пауза в капсуле</Badge>
+        ) : null}
         {practice.courseCheck && practice.courseCheck !== "on_course" ? (
           <Badge tone={courseCheckTone(practice.courseCheck)}>
             {COURSE_CHECK_LABEL[practice.courseCheck]}
@@ -131,11 +138,20 @@ function PracticeCard({
 
       <PracticeHistoryStrip practice={practice} />
 
-      {checkIn?.status !== "skipped" ? (
-        <PracticeTimer practice={practice} checkIn={checkIn} />
-      ) : null}
-
       <div className="mt-3 flex flex-wrap items-center gap-2">
+        {checkIn?.status !== "skipped" &&
+        !(checkIn && isFullCredit(checkIn.status)) &&
+        checkIn?.status !== "partial" ? (
+          <Link href={`/drill?id=${practice.id}`}>
+            <Button type="button">
+              {sessionLive
+                ? "Вернуться в капсулу"
+                : sessionPaused
+                  ? "Продолжить в капсуле"
+                  : "В разучивание"}
+            </Button>
+          </Link>
+        ) : null}
         {checkIn && isFullCredit(checkIn.status) ? (
           <>
             <Button type="button" variant="primary" disabled>
@@ -148,6 +164,11 @@ function PracticeCard({
             <Button type="button" variant="ghost" onClick={onClear}>
               Отменить
             </Button>
+            <Link href={`/drill?id=${practice.id}`}>
+              <Button type="button" variant="ghost">
+                Разучивание
+              </Button>
+            </Link>
           </>
         ) : checkIn?.status === "partial" ? (
           <>
@@ -160,6 +181,11 @@ function PracticeCard({
             <Button type="button" variant="ghost" onClick={onClear}>
               Отменить
             </Button>
+            <Link href={`/drill?id=${practice.id}`}>
+              <Button type="button" variant="ghost">
+                Добить в разучивании
+              </Button>
+            </Link>
           </>
         ) : checkIn?.status === "skipped" ? (
           <>
@@ -274,8 +300,8 @@ export function TodayView() {
           <div className="space-y-3">
             <Hint title="С чего начать">
               <p>
-                На экране <strong>Этап</strong> добавь практики и минимум минут —
-                дальше таймер на Сегодня.
+                На экране <strong>Этап</strong> добавь практики — качать их
+                будешь в <strong>Разучивании</strong> (медкапсула).
               </p>
             </Hint>
             <Link href="/stage">
@@ -287,21 +313,32 @@ export function TodayView() {
         <>
           <Section
             title="На сегодня"
-            hint={`Ежедневные шаги этапа «${stage.title}». XP после «Готово»: ${XP_HINTS.checkInScale}.`}
+            hint={`Чеклист дня · этап «${stage.title}». Сессия — в Разучивании.`}
           >
+            <div className="mb-3">
+              <Link href="/drill">
+                <Button type="button">Открыть разучивание</Button>
+              </Link>
+            </div>
             {daily.length === 0 ? (
               <p className="text-sm text-[var(--muted)]">
                 Ежедневных практик нет. Их можно добавить на экране этапа.
               </p>
             ) : (
               <ul className="space-y-3">
-                {daily.map((practice) => (
+                {daily.map((practice) => {
+                  const timer = (data.practiceTimers ?? []).find(
+                    (t) => t.practiceId === practice.id,
+                  );
+                  return (
                   <PracticeCard
                     key={practice.id}
                     practice={practice}
                     dreamTitle={dream.title}
                     stageTitle={stage.title}
                     checkIn={getCheckInForPracticePeriod(data, practice)}
+                    sessionLive={Boolean(timer?.runningSince)}
+                    sessionPaused={Boolean(timer && !timer.runningSince)}
                     onClaimWithoutTimer={() =>
                       claimPracticeWithoutTimer(
                         practice.id,
@@ -322,7 +359,8 @@ export function TodayView() {
                       )
                     }
                   />
-                ))}
+                  );
+                })}
               </ul>
             )}
           </Section>
@@ -333,13 +371,19 @@ export function TodayView() {
               hint={`${weekLabel}. Одна отметка на практику за всю неделю.`}
             >
               <ul className="space-y-3">
-                {weekly.map((practice) => (
+                {weekly.map((practice) => {
+                  const timer = (data.practiceTimers ?? []).find(
+                    (t) => t.practiceId === practice.id,
+                  );
+                  return (
                   <PracticeCard
                     key={practice.id}
                     practice={practice}
                     dreamTitle={dream.title}
                     stageTitle={stage.title}
                     checkIn={getCheckInForPracticePeriod(data, practice)}
+                    sessionLive={Boolean(timer?.runningSince)}
+                    sessionPaused={Boolean(timer && !timer.runningSince)}
                     onClaimWithoutTimer={() =>
                       claimPracticeWithoutTimer(
                         practice.id,
@@ -360,7 +404,8 @@ export function TodayView() {
                       )
                     }
                   />
-                ))}
+                  );
+                })}
               </ul>
             </Section>
           ) : null}

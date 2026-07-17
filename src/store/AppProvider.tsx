@@ -160,7 +160,11 @@ type AppContextValue = {
   markPracticeMoments: (
     practiceId: string,
     kinds: PracticeMomentKind[],
-    options?: { checkpointElapsedMs?: number },
+    options?: {
+      checkpointElapsedMs?: number;
+      pendingMoment?: PracticeMomentKind | null;
+      longRunReviewed?: boolean;
+    },
   ) => void;
   /** Clear moment flags so new thresholds can fire after a min bump. */
   clearPracticeMoments: (practiceId: string) => void;
@@ -939,18 +943,25 @@ export function AppProvider({ children }: { children: ReactNode }) {
               : existing?.momentsShown;
           const checkpointElapsedMs =
             options?.checkpointElapsedMs ?? existing?.lastCheckpointElapsedMs;
+          const pendingMoment =
+            options && "pendingMoment" in options
+              ? options.pendingMoment
+              : existing?.pendingMoment;
+          const longRunReviewed =
+            options?.longRunReviewed ?? existing?.longRunReviewed;
+
+          const patch = {
+            momentsShown: merged,
+            lastCheckpointElapsedMs: checkpointElapsedMs,
+            pendingMoment: pendingMoment ?? null,
+            longRunReviewed: Boolean(longRunReviewed),
+          };
 
           if (existing) {
             return {
               ...prev,
               practiceTimers: timers.map((t) =>
-                t.practiceId === practiceId
-                  ? {
-                      ...t,
-                      momentsShown: merged,
-                      lastCheckpointElapsedMs: checkpointElapsedMs,
-                    }
-                  : t,
+                t.practiceId === practiceId ? { ...t, ...patch } : t,
               ),
             };
           }
@@ -964,8 +975,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
                 accumulatedMs: 0,
                 runningSince: null,
                 periodKey,
-                momentsShown: merged,
-                lastCheckpointElapsedMs: checkpointElapsedMs,
+                ...patch,
               },
             ],
           };

@@ -111,6 +111,13 @@ export type PracticeTimerSession = {
    * then advanced each checkpoint).
    */
   lastCheckpointElapsedMs?: number;
+  /**
+   * Moment dialog waiting for a choice — survives leaving /drill so we
+   * don't lose the card while keeping the pause intentional.
+   */
+  pendingMoment?: PracticeMomentKind | null;
+  /** Long-run honesty prompt already handled this period. */
+  longRunReviewed?: boolean;
 };
 
 /** material = book/course/etc; teacher = mentor figure for the stage (Lacuna-lane). */

@@ -12,6 +12,7 @@ import {
 import { getCharacterProgress } from "@/lib/gamification";
 import { useApp } from "@/store/AppProvider";
 import { OnboardingHost } from "./Onboarding";
+import { ActiveSessionBar } from "./ActiveSessionBar";
 import { PortraitAvatar } from "./PortraitAvatar";
 import { ProgressHud } from "./ProgressHud";
 import { ReminderHost } from "./ReminderHost";
@@ -20,6 +21,7 @@ import { ToastHost } from "./ToastHost";
 
 const nav = [
   { href: "/", label: "Сегодня" },
+  { href: "/drill", label: "Разучивание" },
   { href: "/network", label: "Сеть" },
   { href: "/map", label: "Карта" },
   { href: "/dream", label: "Мечта" },
@@ -112,6 +114,8 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </div>
       </header>
+
+      <ActiveSessionBar />
 
       <main className="relative z-10 mx-auto w-full max-w-3xl flex-1 px-4 py-6">
         {children}

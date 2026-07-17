@@ -59,9 +59,16 @@ export function PracticeTimer({
     (t) => t.practiceId === practice.id,
   );
   const [now, setNow] = useState(() => Date.now());
-  const [moment, setMoment] = useState<MomentKind | null>(null);
-  const longRunAsked = useRef(false);
-  const momentLock = useRef(false);
+  const [moment, setMoment] = useState<MomentKind | null>(
+    () => session?.pendingMoment ?? null,
+  );
+  const momentLock = useRef(Boolean(session?.pendingMoment));
+
+  useEffect(() => {
+    if (!session?.pendingMoment) return;
+    setMoment(session.pendingMoment);
+    momentLock.current = true;
+  }, [session?.pendingMoment]);
 
   useEffect(() => {
     if (!session?.runningSince) return;
@@ -70,18 +77,21 @@ export function PracticeTimer({
   }, [session?.runningSince]);
 
   useEffect(() => {
-    if (!session || checkIn || longRunAsked.current) return;
+    if (!session || checkIn || session.longRunReviewed) return;
     const elapsed = getTimerElapsedMs(session);
     const thresholdMs = longRunThresholdMinutes(practice) * 60_000;
     if (elapsed < thresholdMs) return;
 
-    longRunAsked.current = true;
+    markPracticeMoments(practice.id, [], { longRunReviewed: true });
     if (session.runningSince) pausePracticeTimer(practice.id);
     const mins = elapsedToMinutes(elapsed);
     const keepAll = window.confirm(
       `Таймер насчитал ${mins} мин. Если ты был не у практики всё это время — лучше поправить.\n\nЗасчитать все ${mins} мин?`,
     );
-    if (keepAll) return;
+    if (keepAll) {
+      startPracticeTimer(practice.id);
+      return;
+    }
 
     const raw = window.prompt(
       "Сколько минут реально было?",
@@ -104,6 +114,8 @@ export function PracticeTimer({
     pausePracticeTimer,
     resetPracticeTimer,
     setPracticeTimerMinutes,
+    startPracticeTimer,
+    markPracticeMoments,
   ]);
 
   const elapsedMs = getTimerElapsedMs(session, now);
@@ -154,7 +166,10 @@ export function PracticeTimer({
 
     momentLock.current = true;
     if (session.runningSince) pausePracticeTimer(practice.id);
-    markPracticeMoments(practice.id, mark, { checkpointElapsedMs });
+    markPracticeMoments(practice.id, mark, {
+      checkpointElapsedMs,
+      pendingMoment: next,
+    });
     setMoment(next);
   }, [
     min,
@@ -222,6 +237,7 @@ export function PracticeTimer({
   function onMomentChoose(id: string) {
     const kind = moment;
     setMoment(null);
+    markPracticeMoments(practice.id, [], { pendingMoment: null });
     if (!kind) return;
 
     if (id === "fix") {
@@ -461,8 +477,8 @@ export function PracticeTimer({
                   return;
                 }
                 resetPracticeTimer(practice.id);
-                longRunAsked.current = false;
                 setMoment(null);
+                markPracticeMoments(practice.id, [], { pendingMoment: null });
               }}
             >
               Сброс
