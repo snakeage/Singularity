@@ -143,18 +143,18 @@ export function PracticeTimer({
     const mark: MomentKind[] = [];
     let checkpointElapsedMs: number | undefined;
 
-    if (minutes >= strongAt && !shown.includes("strong")) {
+    if (elapsedMs >= strongAt * 60_000 && !shown.includes("strong")) {
       next = "strong";
       mark.push("strong");
       if (!shown.includes("norma")) mark.push("norma");
       checkpointElapsedMs = strongMs;
-    } else if (minutes >= min && !shown.includes("norma")) {
+    } else if (elapsedMs >= min * 60_000 && !shown.includes("norma")) {
       next = "norma";
       mark.push("norma");
-    } else if (minutes >= overworkAt && !shown.includes("overwork")) {
+    } else if (elapsedMs >= overworkAt * 60_000 && !shown.includes("overwork")) {
       next = "overwork";
       mark.push("overwork");
-    } else if (minutes >= strongAt) {
+    } else if (elapsedMs >= strongMs) {
       const watermark = session.lastCheckpointElapsedMs ?? strongMs;
       if (elapsedMs >= watermark + checkpointEveryMs) {
         next = "checkpoint";

@@ -280,8 +280,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    setData(loadData());
-    setReady(true);
+    try {
+      setData(loadData());
+    } catch (err) {
+      console.error("Singularity: failed to load local data", err);
+    } finally {
+      setReady(true);
+    }
   }, []);
 
   const focusDream = getFocusDream(data);

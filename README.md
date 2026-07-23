@@ -15,14 +15,15 @@ npm install
 npm run dev
 ```
 
-Открой [http://localhost:3000](http://localhost:3000).
+Открой [http://localhost:3000](http://localhost:3000) или [http://127.0.0.1:3000](http://127.0.0.1:3000)  
+(оба origin разрешены в `next.config` — иначе в Next 16 dev гидрация может зависнуть на «Загрузка…»).
 
 ## Экраны
 
 | Путь | Назначение |
 | --- | --- |
-| `/` | Сегодня — чеклист практик активного этапа |
-| `/drill` | Разучивание — медкапсула: выбор базы и сессия |
+| `/` | Сегодня — чеклист практик; вход в сессию |
+| `/drill` | Разучивание — медкапсула: базы, таймер, моменты |
 | `/network` | Сеть — узлы-базы этапа и уровень канала |
 | `/map` | Карта пути: старт → этапы → мечта |
 | `/dream` | Мечта, «где я сейчас», этапы, препятствия/планы |
@@ -40,8 +41,8 @@ npm run dev
 | [docs/glossary.md](docs/glossary.md) | Термины |
 | [docs/requirements-mvp.md](docs/requirements-mvp.md) | User stories MVP |
 | [docs/data-model.md](docs/data-model.md) | Сущности и связи |
-| [docs/backlog.md](docs/backlog.md) | Идеи после MVP |
-| [docs/art-direction.md](docs/art-direction.md) | Визуальный канон moment-диалогов |
+| [docs/backlog.md](docs/backlog.md) | Next / Later / Done |
+| [docs/art-direction.md](docs/art-direction.md) | Moments + drill-капсулы (ready/session) |
 | [docs/decisions/](docs/decisions/) | ADR |
 
 ## Хранение данных

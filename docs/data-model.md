@@ -178,6 +178,31 @@ erDiagram
 | statsSnapshot | object? | Число check-ins, закрытых milestone и т.п. |
 | createdAt | datetime | |
 
+### PracticeTimerSession
+
+Живая сессия таймера (в `AppData.practiceTimers`). Одна running-сессия за раз.
+
+| Поле | Тип | Описание |
+| --- | --- | --- |
+| practiceId | string | FK → Practice |
+| accumulatedMs | number | Накопленное время на паузе |
+| runningSince | string \| null | ISO-старт текущего прогона; `null` = пауза |
+| periodKey | string? | День или week-start сессии |
+| momentsShown | enum[]? | Уже показанные moment-карточки периода |
+| lastCheckpointElapsedMs | number? | Водяной знак checkpoint |
+| pendingMoment | enum \| null? | Диалог, ждущий ответа (переживает уход с `/drill`) |
+| longRunReviewed | boolean? | Длинный прогон уже подтверждён |
+
+### Profile (в `AppData.profile`)
+
+| Поле | Тип | Описание |
+| --- | --- | --- |
+| name | string | Имя путника |
+| presentation | `male` \| `female`? | Каталог портретов |
+| skinId | string? | Архетип скина (wanderer / apprentice / keeper / channeler) |
+| reminders | object? | Напоминания в браузере |
+| strictLadder | boolean? | Не перепрыгивать этапы |
+
 ## Вычисляемые понятия (не обязательно хранить)
 
 - **Stage progress** — доля `Milestone` в статусе `done` (и/или чеклист exitCriteria).

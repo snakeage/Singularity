@@ -810,7 +810,21 @@ code {
 }
 .drill-bay {
   position: relative;
+  z-index: 2;
   animation: drill-bay-in 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@media (min-width: 768px) {
+  .drill-bay {
+    position: sticky;
+    top: 0.35rem;
+  }
+  .drill-bay__stage {
+    aspect-ratio: 16 / 9;
+    min-height: 10.5rem;
+  }
+}
+.drill-focus {
+  min-height: 0;
 }
 .drill-bay__stage {
   position: relative;
@@ -827,9 +841,51 @@ code {
   transform: scale(1.06);
   animation: drill-bay-drift 22s ease-in-out infinite alternate;
 }
+.drill-bay__art--back,
+.drill-bay__art--front {
+  /* Opacity only — transform transitions kill the live drift animation. */
+  transition: opacity 520ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.drill-bay__art--back {
+  z-index: 0;
+  opacity: 1;
+}
+.drill-bay__art--back.drill-bay__art--out {
+  opacity: 0;
+}
+.drill-bay__art--front {
+  z-index: 1;
+}
+.drill-bay__art--front.drill-bay__art--prep {
+  opacity: 0;
+  animation: none;
+}
+.drill-bay__art--front.drill-bay__art--in {
+  opacity: 1;
+}
+.drill-bay__flash {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  opacity: 0;
+  background: radial-gradient(
+    ellipse at 50% 45%,
+    color-mix(in srgb, var(--create-soft, #d8ebea) 55%, transparent),
+    transparent 62%
+  );
+  mix-blend-mode: screen;
+}
+.drill-bay--entering .drill-bay__flash {
+  animation: drill-bay-flash 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.drill-bay--entering .drill-bay__stage {
+  animation: drill-bay-enter-pulse 680ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
 .drill-bay__wash {
   position: absolute;
   inset: 0;
+  z-index: 2;
   background:
     linear-gradient(
       115deg,
@@ -846,6 +902,7 @@ code {
   right: 28%;
   top: 42%;
   height: 38%;
+  z-index: 2;
   border-radius: 50%;
   background: radial-gradient(
     ellipse at center,
@@ -859,6 +916,7 @@ code {
 .drill-bay__scan {
   position: absolute;
   inset: 0;
+  z-index: 2;
   opacity: 0;
   background: linear-gradient(
     105deg,
@@ -871,6 +929,7 @@ code {
 .drill-bay__vignette {
   position: absolute;
   inset: 0;
+  z-index: 2;
   background: radial-gradient(
     120% 90% at 50% 40%,
     transparent 45%,
@@ -882,7 +941,7 @@ code {
   position: absolute;
   left: 0.85rem;
   bottom: 0.85rem;
-  z-index: 2;
+  z-index: 5;
   display: inline-flex;
   align-items: center;
   gap: 0.4rem;
@@ -906,12 +965,21 @@ code {
   animation: drill-pulse-dot 2.4s ease-out infinite;
 }
 .drill-bay--live .drill-bay__glow {
-  opacity: 0.72;
+  opacity: 0.82;
   animation: drill-glow-live 1.6s ease-in-out infinite;
 }
 .drill-bay--live .drill-bay__scan {
   opacity: 1;
-  animation: drill-scan 2.8s linear infinite;
+  background: linear-gradient(
+    105deg,
+    transparent 28%,
+    color-mix(in srgb, var(--create-soft, #d8ebea) 38%, transparent) 50%,
+    transparent 72%
+  );
+  animation: drill-scan 2.4s linear infinite;
+}
+.drill-bay--live .drill-bay__art {
+  animation: drill-bay-live-pulse 3.2s ease-in-out infinite alternate;
 }
 .drill-bay--live .drill-bay__pulse {
   background: #f2fffc;
@@ -968,12 +1036,54 @@ code {
     transform: none;
   }
 }
+@keyframes drill-bay-flash {
+  0% {
+    opacity: 0;
+  }
+  35% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes drill-bay-enter-pulse {
+  0% {
+    transform: scale(0.985);
+    box-shadow:
+      0 18px 48px rgba(0, 0, 0, 0.45),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+  45% {
+    transform: scale(1.015);
+    box-shadow:
+      0 22px 56px rgba(0, 0, 0, 0.5),
+      0 0 0 1px color-mix(in srgb, var(--create-accent, #0d6e66) 55%, transparent),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.12);
+  }
+  100% {
+    transform: none;
+    box-shadow:
+      0 18px 48px rgba(0, 0, 0, 0.45),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+  }
+}
 @keyframes drill-bay-drift {
   from {
     transform: scale(1.06) translate3d(-1.2%, 0, 0);
   }
   to {
     transform: scale(1.1) translate3d(1.4%, -1%, 0);
+  }
+}
+@keyframes drill-bay-live-pulse {
+  from {
+    transform: scale(1.06) translate3d(-1%, 0, 0);
+    filter: brightness(1);
+  }
+  to {
+    transform: scale(1.14) translate3d(1.2%, -0.8%, 0);
+    filter: brightness(1.08);
   }
 }
 @keyframes drill-glow-breathe {
@@ -1043,12 +1153,18 @@ code {
   .drill-bay__glow,
   .drill-bay__scan,
   .drill-bay__pulse,
+  .drill-bay__flash,
+  .drill-bay__stage,
   .drill-rail__item,
   .drill-capsule {
     animation: none !important;
   }
-  .drill-bay__art {
+  .drill-bay__art,
+  .drill-bay__art--back,
+  .drill-bay__art--front {
+    transition: none !important;
     transform: none;
+    opacity: 1 !important;
   }
   .drill-bay--live .drill-bay__scan {
     opacity: 0.35;

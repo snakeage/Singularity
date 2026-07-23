@@ -2,7 +2,13 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
 import {
   LOCALE_LABEL,
   getSkin,
@@ -25,7 +31,7 @@ import {
 import { isFullCredit } from "@/lib/practiceLevels";
 import type { AppData, Practice } from "@/lib/types";
 import { useApp } from "@/store/AppProvider";
-import { DrillBay, type DrillBayMode } from "./DrillBay";
+import { DrillBay, type DrillBayHandle, type DrillBayMode } from "./DrillBay";
 import { PracticeTimer } from "./PracticeTimer";
 import { Badge, Button, EmptyState } from "./ui";
 
@@ -60,6 +66,8 @@ export function DrillView() {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const practiceIds = practices.map((p) => p.id).join(",");
+  const bayRef = useRef<DrillBayHandle>(null);
+  const prevBayMode = useRef<DrillBayMode | null>(null);
 
   useEffect(() => {
     if (!ready) return;
@@ -80,6 +88,31 @@ export function DrillView() {
     () => practices.find((p) => p.id === selectedId) ?? null,
     [practices, selectedId],
   );
+
+  const certified = stage ? stageHasCertifiedPath(data, stage.id) : false;
+  const checkIn = selected
+    ? getCheckInForPracticePeriod(data, selected)
+    : undefined;
+  const timerSession = selected
+    ? (data.practiceTimers ?? []).find((t) => t.practiceId === selected.id)
+    : undefined;
+  const bayMode: DrillBayMode =
+    checkIn && isFullCredit(checkIn.status)
+      ? "done"
+      : timerSession?.runningSince
+        ? "live"
+        : timerSession
+          ? "paused"
+          : "idle";
+
+  useEffect(() => {
+    const prev = prevBayMode.current;
+    prevBayMode.current = bayMode;
+    if (prev == null || prev === bayMode) return;
+    if (bayMode === "live" && (prev === "idle" || prev === "done")) {
+      bayRef.current?.revealEnter();
+    }
+  }, [bayMode]);
 
   function selectPractice(practice: Practice) {
     setSelectedId(practice.id);
@@ -132,23 +165,9 @@ export function DrillView() {
     );
   }
 
-  const certified = stageHasCertifiedPath(data, stage.id);
   const nodeState = selected
     ? resolveNetworkNodeState(data, selected, certified)
     : null;
-  const checkIn = selected
-    ? getCheckInForPracticePeriod(data, selected)
-    : undefined;
-  const timerSession = selected
-    ? (data.practiceTimers ?? []).find((t) => t.practiceId === selected.id)
-    : undefined;
-  const bayMode: DrillBayMode = checkIn && isFullCredit(checkIn.status)
-    ? "done"
-    : timerSession?.runningSince
-      ? "live"
-      : timerSession
-        ? "paused"
-        : "idle";
 
   return (
     <div
@@ -165,7 +184,7 @@ export function DrillView() {
       <div className="drill-room__veil pointer-events-none absolute inset-0" aria-hidden />
       <div className="drill-room__grain pointer-events-none absolute inset-0" aria-hidden />
 
-      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-7.5rem)] max-w-3xl flex-col gap-5 px-4 py-5 sm:px-5">
+      <div className="relative z-10 mx-auto flex min-h-[calc(100dvh-7.5rem)] max-w-3xl flex-col gap-4 px-4 py-5 sm:gap-5 sm:px-5">
         <header className="flex flex-wrap items-end justify-between gap-3">
           <div>
             <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[var(--create-soft)]">
@@ -189,15 +208,6 @@ export function DrillView() {
             К Сегодня
           </Link>
         </header>
-
-        <DrillBay
-          key={selected?.id ?? "bay"}
-          skinId={skinId}
-          presentation={presentation}
-          mode={bayMode}
-          accent={skin.accent}
-          accentSoft={skin.accentSoft}
-        />
 
         <section className="space-y-2">
           <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-white/45">
@@ -246,68 +256,80 @@ export function DrillView() {
           </ul>
         </section>
 
-        {selected && nodeState ? (
-          <section className="drill-capsule flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/15 bg-black/40 shadow-2xl backdrop-blur-md">
-            <div className="border-b border-white/10 px-4 py-4 sm:px-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge tone="metal">{NETWORK_NODE_LABEL[nodeState]}</Badge>
-                <Badge>
-                  {selected.frequency === "weekly"
-                    ? "на неделю"
-                    : "на сегодня"}
-                </Badge>
-                {nodeState === "slot" ? (
-                  <Badge tone="accent">установка базы</Badge>
+        <div className="drill-focus flex min-h-0 flex-1 flex-col gap-3 sm:gap-4">
+          <DrillBay
+            key={selected?.id ?? "bay"}
+            ref={bayRef}
+            skinId={skinId}
+            presentation={presentation}
+            mode={bayMode}
+            accent={skin.accent}
+            accentSoft={skin.accentSoft}
+          />
+
+          {selected && nodeState ? (
+            <section className="drill-capsule flex min-h-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/15 bg-black/40 shadow-2xl backdrop-blur-md">
+              <div className="border-b border-white/10 px-4 py-3 sm:px-5 sm:py-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge tone="metal">{NETWORK_NODE_LABEL[nodeState]}</Badge>
+                  <Badge>
+                    {selected.frequency === "weekly"
+                      ? "на неделю"
+                      : "на сегодня"}
+                  </Badge>
+                  {nodeState === "slot" ? (
+                    <Badge tone="accent">установка базы</Badge>
+                  ) : null}
+                  {bayMode === "live" ? (
+                    <Badge tone="accent">идёт сессия</Badge>
+                  ) : null}
+                </div>
+                <h1 className="mt-2 font-display text-2xl text-white sm:text-3xl">
+                  {selected.title}
+                </h1>
+                <p className="mt-1.5 text-sm leading-relaxed text-white/70">
+                  {NODE_LEGEND[nodeState]}
+                </p>
+                {selected.whyForStage ? (
+                  <p className="mt-1.5 text-sm text-white/60">
+                    Зачем этапу: {selected.whyForStage}
+                  </p>
                 ) : null}
-                {bayMode === "live" ? (
-                  <Badge tone="accent">идёт сессия</Badge>
+                {selected.cue ? (
+                  <p className="mt-1 text-xs text-white/45">
+                    Когда/где: {selected.cue}
+                  </p>
                 ) : null}
               </div>
-              <h1 className="mt-2 font-display text-2xl text-white sm:text-3xl">
-                {selected.title}
-              </h1>
-              <p className="mt-2 text-sm leading-relaxed text-white/70">
-                {NODE_LEGEND[nodeState]}
-              </p>
-              {selected.whyForStage ? (
-                <p className="mt-2 text-sm text-white/60">
-                  Зачем этапу: {selected.whyForStage}
-                </p>
-              ) : null}
-              {selected.cue ? (
-                <p className="mt-1 text-xs text-white/45">
-                  Когда/где: {selected.cue}
-                </p>
-              ) : null}
-            </div>
 
-            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4 sm:px-5">
-              {checkIn?.status === "skipped" ? (
-                <p className="text-sm text-white/65">
-                  На этот период отмечен пропуск. Сними пропуск на «Сегодня»
-                  или выбери другую базу.
-                </p>
-              ) : (
-                <div className="drill-timer rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
-                  <PracticeTimer practice={selected} checkIn={checkIn} />
-                </div>
-              )}
-            </div>
+              <div className="flex-1 space-y-4 overflow-y-auto px-4 py-3 sm:px-5 sm:py-4">
+                {checkIn?.status === "skipped" ? (
+                  <p className="text-sm text-white/65">
+                    На этот период отмечен пропуск. Сними пропуск на «Сегодня»
+                    или выбери другую базу.
+                  </p>
+                ) : (
+                  <div className="drill-timer rounded-2xl border border-white/10 bg-white/5 p-3 sm:p-4">
+                    <PracticeTimer practice={selected} checkIn={checkIn} />
+                  </div>
+                )}
+              </div>
 
-            <div className="flex flex-wrap gap-2 border-t border-white/10 px-4 py-3 sm:px-5">
-              <Link href="/network">
-                <Button type="button" variant="ghost" className="!text-white/80 hover:!bg-white/10">
-                  К сети этапа
-                </Button>
-              </Link>
-              <Link href="/stage">
-                <Button type="button" variant="ghost" className="!text-white/80 hover:!bg-white/10">
-                  Настроить на Этапе
-                </Button>
-              </Link>
-            </div>
-          </section>
-        ) : null}
+              <div className="flex flex-wrap gap-2 border-t border-white/10 px-4 py-3 sm:px-5">
+                <Link href="/network">
+                  <Button type="button" variant="ghost" className="!text-white/80 hover:!bg-white/10">
+                    К сети этапа
+                  </Button>
+                </Link>
+                <Link href="/stage">
+                  <Button type="button" variant="ghost" className="!text-white/80 hover:!bg-white/10">
+                    Настроить на Этапе
+                  </Button>
+                </Link>
+              </div>
+            </section>
+          ) : null}
+        </div>
       </div>
     </div>
   );

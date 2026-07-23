@@ -12,7 +12,8 @@ export function getTimerElapsedMs(
 }
 
 export function elapsedToMinutes(elapsedMs: number): number {
-  return Math.max(0, Math.round(elapsedMs / 60_000));
+  // Floor so 24:30 never counts as 25 — thresholds need a full minute.
+  return Math.max(0, Math.floor(elapsedMs / 60_000));
 }
 
 export function formatElapsed(elapsedMs: number): string {
