@@ -37,6 +37,10 @@ import { loadData, saveData } from "@/lib/storage";
 import { canActivateStage } from "@/lib/stages";
 import { parseTags } from "@/lib/tags";
 import { elapsedToMinutes, getTimerElapsedMs, parseMinMinutes } from "@/lib/timer";
+import {
+  pushSessionReward,
+  rewardFromDataChange,
+} from "@/lib/sessionReward";
 import { pushToast } from "@/lib/toastBus";
 import {
   EMPTY_DATA,
@@ -937,7 +941,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
         persist((prev) => {
           const practice = prev.practices.find((p) => p.id === practiceId);
           if (!practice) return prev;
-          const periodKey = getPracticePeriodKey(practice);
           const timers = prev.practiceTimers ?? [];
           const existing = timers.find((t) => t.practiceId === practiceId);
           const merged =
@@ -971,19 +974,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             };
           }
 
-          return {
-            ...prev,
-            practiceTimers: [
-              ...timers,
-              {
-                practiceId,
-                accumulatedMs: 0,
-                runningSince: null,
-                periodKey,
-                ...patch,
-              },
-            ],
-          };
+          // No live session — don't spawn a zero-time timer just to store flags.
+          return prev;
         }),
       );
     }, []);
@@ -1029,6 +1021,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let minutesSpent = 0;
       let status: CheckInStatus = "partial";
       let minMinutes: number | undefined;
+      let practiceTitle = "Практика";
+      let reward = null as ReturnType<typeof rewardFromDataChange>;
 
       setData(
         persist((prev) => {
@@ -1039,6 +1033,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           minutesSpent = elapsedToMinutes(getTimerElapsedMs(session));
           status = resolveEffortStatus(practice, minutesSpent);
           minMinutes = practice?.minMinutes;
+          practiceTitle = practice?.title?.trim() || practiceTitle;
 
           const withoutPeriod = prev.checkIns.filter((c) => {
             if (c.practiceId !== practiceId) return true;
@@ -1046,7 +1041,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return !(c.date >= weekStart && c.date <= weekEnd);
           });
 
-          return {
+          const next: AppData = {
             ...prev,
             checkIns: [
               ...withoutPeriod,
@@ -1063,17 +1058,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
               (t) => t.practiceId !== practiceId,
             ),
           };
+          reward = rewardFromDataChange(prev, next, {
+            practiceTitle,
+            status,
+            minutesSpent,
+            minMinutes,
+          });
+          return next;
         }),
       );
 
-      pushToast(
-        motivationCopy(
-          status,
-          minutesSpent,
-          minMinutes,
-          xpForCheckInStatus(status),
-        ),
-      );
+      if (reward) {
+        pushSessionReward(reward);
+      } else {
+        pushToast(
+          motivationCopy(
+            status,
+            minutesSpent,
+            minMinutes,
+            xpForCheckInStatus(status),
+          ),
+        );
+      }
       return { minutesSpent, status };
     }, []);
 
@@ -1085,17 +1091,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const weekStart = weekStartISO(ref);
       const weekEnd = weekEndISO(ref);
       const result: { status: CheckInStatus } = { status: "done" };
+      let practiceTitle = "Практика";
+      let reward = null as ReturnType<typeof rewardFromDataChange>;
 
       setData(
         persist((prev) => {
           const practice = prev.practices.find((p) => p.id === practiceId);
           result.status = resolveClaimWithoutTimer(practice);
+          practiceTitle = practice?.title?.trim() || practiceTitle;
           const withoutPeriod = prev.checkIns.filter((c) => {
             if (c.practiceId !== practiceId) return true;
             if (frequency === "daily") return c.date !== periodKey;
             return !(c.date >= weekStart && c.date <= weekEnd);
           });
-          return {
+          const next: AppData = {
             ...prev,
             checkIns: [
               ...withoutPeriod,
@@ -1111,14 +1120,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
               (t) => t.practiceId !== practiceId,
             ),
           };
+          reward = rewardFromDataChange(prev, next, {
+            practiceTitle,
+            status: result.status,
+            minMinutes: practice?.minMinutes,
+          });
+          return next;
         }),
       );
 
-      pushToast(
-        result.status === "partial"
-          ? "Частично без таймера — минимум не подтверждён временем"
-          : `Сделано без таймера · +${xpForCheckInStatus(result.status)} XP`,
-      );
+      if (reward) {
+        pushSessionReward(reward);
+      } else {
+        pushToast(
+          result.status === "partial"
+            ? "Частично без таймера — минимум не подтверждён временем"
+            : `Сделано без таймера · +${xpForCheckInStatus(result.status)} XP`,
+        );
+      }
       return result.status;
     }, []);
 

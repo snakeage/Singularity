@@ -16,6 +16,7 @@ import { ActiveSessionBar } from "./ActiveSessionBar";
 import { PortraitAvatar } from "./PortraitAvatar";
 import { ProgressHud } from "./ProgressHud";
 import { ReminderHost } from "./ReminderHost";
+import { SessionRewardHost } from "./SessionRewardHost";
 import { TimerSettleHost } from "./TimerSettleHost";
 import { ToastHost } from "./ToastHost";
 
@@ -123,6 +124,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <OnboardingHost />
       <ReminderHost />
       <TimerSettleHost />
+      <SessionRewardHost />
       <ToastHost />
     </div>
   );

@@ -118,7 +118,7 @@
 | `methodology.md` | Лестница + ссылка сюда |
 | `glossary.md` | Короткие термины |
 | `art-direction.md` | Moments + drill-капсулы |
-| `backlog.md` | N11 сеть Done; N14 drill Done; N15 вход в капсулу Done |
+| `backlog.md` | N11 сеть Done; N14–N16 drill (вход, разряд XP, live без zoom) Done |
 
 ## Уточнения читателя
 

@@ -135,8 +135,10 @@ Painterly digital, elegant, cinematic but clean.
 
 Локали капсул: Путник — планета/орбита; Ученик — тёплый пост наставника; Хранитель — **тихий отсек у смотровой палубы** (не проходной коридор); Связной — узел сети.
 
-**Motion + арт:** idle/done → ready-кадр; live/paused → в капсуле + пульс/скан.  
+**Motion + арт:** idle/done → ready-кадр; live/paused → в капсуле.  
+Live motion: **мерцание яркости + скан/glow** — без zoom/дрейфа кадра (не «увеличивается-уменьшается»).  
 **N15:** на idle/done→live — scroll к бай + crossfade/flash; на md+ бай sticky; rail баз выше блока бай+таймер.  
+**N16:** на закрытие с XP — overlay «разряд капсулы» (+XP / level-up); HUD pulse.  
 Таймер **не** обязан паузиться при уходе с экрана — сессия в данных (`pendingMoment` / `longRunReviewed`); на других экранах — `ActiveSessionBar`.
 
 Тот же канон света: не horror-больница, не фиолетовый неон.

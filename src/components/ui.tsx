@@ -161,7 +161,7 @@ export function ProgressBar({ ratio }: { ratio: number }) {
   return (
     <div className="h-2 overflow-hidden rounded-full bg-[var(--panel-2)]">
       <div
-        className="h-full rounded-full bg-[var(--accent)] transition-all"
+        className="progress-bar__fill h-full rounded-full bg-[var(--accent)] transition-[width] duration-700 ease-out"
         style={{ width: `${pct}%` }}
       />
     </div>

@@ -48,6 +48,7 @@
 - N13 visual coherence (частично): shell+портрет-якорь; Сегодня/Сеть/Карта hero-wash; один аватар в шапке; empty states
 - N14 Разучивание: `/drill`, nav, выбор базы, таймер в медкапсуле, легенда узла; Сегодня = чеклист + вход; арт отсека + motion
 - N15 Drill: на Старт — scroll к бай + crossfade/flash; sticky бай на md+; rail выше фокуса
+- N16 Session reward: discharge overlay +XP / level-up; HUD pulse; toast только без XP; live bay без zoom (только мерцание)
 
 ---
 
@@ -199,3 +200,12 @@ Discovery **N13** (visual coherence) — см. секцию ниже в Inbox / 
 **Сделано:** на idle/done→live — `scrollIntoView` + crossfade + мягкий flash; на md+ бай sticky; rail баз выше блока бай+таймер. Пауза/продолжить без forced scroll. `prefers-reduced-motion` — без анимации.
 
 **Won't в v1:** fullscreen cutscene на каждый Старт (D оставить для редких событий позже).
+
+### N16 — Награда за закрытие сессии (Done A+D)
+
+**Проблема:** после «Закрыть» XP пишется тихо (тост) — не читается «сделано / молодец / канал усилен».
+
+**Сделано:** при росте XP (таймер и claim без таймера) — overlay «разряд капсулы» (`+XP`, статус, минуты); при level-up — отдельный акцент уровня/титула; HUD пульсирует. Partial / 0 XP — обычный тост. `prefers-reduced-motion` — без motion-бита.  
+**Полировка:** «Закрыть» из moment не гоняет `confirm` (гонка setData → 0 мин); long-run confirm не перебивает moment; live-арт без zoom — только flicker/scan/glow.
+
+**Won't в v1:** конфетти, лут, cutscene на авто-settle, анимация каждую минуту таймера, zoom/дрейф кадра капсулы.

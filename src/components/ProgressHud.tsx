@@ -1,13 +1,14 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import {
   DEFAULT_PRESENTATION,
-  DEFAULT_SKIN_ID,
   getSkin,
   resolvePresentation,
   resolveSkinId,
 } from "@/lib/characterSkins";
 import { getCharacterProgress, XP_HINTS } from "@/lib/gamification";
+import { subscribeSessionReward } from "@/lib/sessionReward";
 import { useApp } from "@/store/AppProvider";
 import { PortraitAvatar } from "./PortraitAvatar";
 import { ProgressBar } from "./ui";
@@ -21,6 +22,21 @@ export function ProgressHud({
   showPortrait?: boolean;
 }) {
   const { ready, data } = useApp();
+  const [rewardPulse, setRewardPulse] = useState(false);
+
+  useEffect(() => {
+    let timeout: number | undefined;
+    const unsub = subscribeSessionReward(() => {
+      setRewardPulse(true);
+      if (timeout != null) window.clearTimeout(timeout);
+      timeout = window.setTimeout(() => setRewardPulse(false), 1600);
+    });
+    return () => {
+      unsub();
+      if (timeout != null) window.clearTimeout(timeout);
+    };
+  }, []);
+
   if (!ready) return null;
 
   const progress = getCharacterProgress(data);
@@ -31,10 +47,13 @@ export function ProgressHud({
   const skinId = resolveSkinId(data.profile);
   const skin = getSkin(skinId);
   const hasPortrait = resolvePresentation(data.profile) != null;
+  const pulseClass = rewardPulse ? " progress-hud--reward" : "";
 
   if (compact) {
     return (
-      <div className="min-w-[140px] max-w-[200px] flex-1 sm:max-w-[220px] sm:flex-none">
+      <div
+        className={`progress-hud min-w-[140px] max-w-[200px] flex-1 sm:max-w-[220px] sm:flex-none${pulseClass}`}
+      >
         <div className="flex items-center gap-2">
           {showPortrait && hasPortrait ? (
             <PortraitAvatar
@@ -54,7 +73,7 @@ export function ProgressHud({
                   <>ур. {progress.level}</>
                 )}
               </span>
-              <span className="shrink-0 text-[var(--metal)]">
+              <span className="progress-hud__xp shrink-0 text-[var(--metal)]">
                 {progress.xp} XP
               </span>
             </div>
@@ -68,7 +87,7 @@ export function ProgressHud({
   }
 
   return (
-    <div className="panel-frame rounded-md p-4">
+    <div className={`progress-hud panel-frame rounded-md p-4${pulseClass}`}>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-start gap-3">
           {showPortrait && hasPortrait ? (
@@ -91,7 +110,9 @@ export function ProgressHud({
             </p>
           </div>
         </div>
-        <p className="text-sm text-[var(--metal)]">{progress.xp} XP</p>
+        <p className="progress-hud__xp text-sm text-[var(--metal)]">
+          {progress.xp} XP
+        </p>
       </div>
 
       <div className="mt-3 space-y-1">

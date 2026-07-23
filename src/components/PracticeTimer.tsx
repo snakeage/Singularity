@@ -78,6 +78,8 @@ export function PracticeTimer({
 
   useEffect(() => {
     if (!session || checkIn || session.longRunReviewed) return;
+    // Don't interrupt moment dialogs with native confirm/prompt.
+    if (session.pendingMoment || moment || momentLock.current) return;
     const elapsed = getTimerElapsedMs(session);
     const thresholdMs = longRunThresholdMinutes(practice) * 60_000;
     if (elapsed < thresholdMs) return;
@@ -111,6 +113,7 @@ export function PracticeTimer({
     session,
     checkIn,
     practice,
+    moment,
     pausePracticeTimer,
     resetPracticeTimer,
     setPracticeTimerMinutes,
@@ -237,14 +240,17 @@ export function PracticeTimer({
   function onMomentChoose(id: string) {
     const kind = moment;
     setMoment(null);
-    markPracticeMoments(practice.id, [], { pendingMoment: null });
     if (!kind) return;
 
-    if (id === "fix") {
-      const result = finish();
-      if (result.status === "partial") offerEaseAfterPartial();
+    if (id === "close") {
+      // finish() drops the timer (and pendingMoment). Do not clear moments
+      // first — a second setData can race and close with 0 мин → partial + confirm.
+      finish();
       return;
     }
+
+    markPracticeMoments(practice.id, [], { pendingMoment: null });
+
     if (id === "continue") {
       startPracticeTimer(practice.id);
       return;
