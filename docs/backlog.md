@@ -49,6 +49,7 @@
 - N14 Разучивание: `/drill`, nav, выбор базы, таймер в медкапсуле, легенда узла; Сегодня = чеклист + вход; арт отсека + motion
 - N15 Drill: на Старт — scroll к бай + crossfade/flash; sticky бай на md+; rail выше фокуса
 - N16 Session reward: discharge overlay +XP / level-up; HUD pulse; toast только без XP; live bay без zoom (только мерцание)
+- N0 Deploy: Vercel Hobby · https://singularity-eight-dusky.vercel.app (auto из `main`)
 
 ---
 
@@ -69,7 +70,7 @@
 
 | ID | Идея | Заметки |
 | --- | --- | --- |
-| N0 | Deploy на Vercel | Personal URL с телефона; без sync пока |
+| — | — | пусто |
 
 ---
 
@@ -218,6 +219,9 @@ Discovery **N13** (visual coherence) — см. секцию ниже в Inbox / 
 
 **Не в v1:** шифрование E2E, мультиаккаунт семьи, realtime collaboration.
 
-### N0 — Deploy (In progress)
+### N0 — Deploy (Done)
 
-`npm run build` ок. Хостинг: Vercel, репо `snakeage/Singularity`. Пока без облачного сейва — на каждом устройстве свой `localStorage`; перенос через экспорт/импорт на «Данные».
+**Сделано:** Vercel Hobby, проект `singularity`, GitHub `snakeage/Singularity` → auto-deploy с `main`.  
+**URL:** https://singularity-eight-dusky.vercel.app  
+
+Пока без облачного сейва — на каждом устройстве свой `localStorage`; перенос через экспорт/импорт на «Данные». Далее — **N17** Firebase.

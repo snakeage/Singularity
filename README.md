@@ -20,14 +20,12 @@ npm run dev
 
 ## Деплой (для себя / телефон)
 
-1. Репо на GitHub: `snakeage/Singularity`.
-2. [Vercel](https://vercel.com) → Add New Project → Import этот репозиторий → Deploy.
-3. Framework: Next.js (определится сам). Env пока не нужны.
-4. После деплоя открой выданный URL с телефона.
+**Live:** [https://singularity-eight-dusky.vercel.app](https://singularity-eight-dusky.vercel.app)  
+(Vercel Hobby · push в `main` → автодеплой)
 
-Пока данные живут в `localStorage` **этого** браузера. Синхронизация телефон↔комп — следующий шаг (**N17** Firebase). До него: экран **Данные** → экспорт / импорт JSON.
+Пока данные в `localStorage` **этого** браузера. Синхронизация телефон↔комп — следующий шаг (**N17** Firebase). До него: экран **Данные** → экспорт / импорт JSON.
 
-Production-проверка локально:
+Локальная production-проверка:
 
 ```bash
 npm run build && npm start
