@@ -59,7 +59,6 @@
 
 | ID | Идея | Зачем | Заметки |
 | --- | --- | --- | --- |
-| N17 | Firebase: регистрация + облачный сейв | Один сейв на телефон и комп | Auth + Firestore документ; localStorage остаётся кэшем |
 | N13 | Visual coherence после create | Подтянуть UI к стилю портретов | a–d/f Done; e/g Later |
 | N12c | Арты портретов м/ж | Дополировка по вкусу | 8 jpg уже есть |
 | N3 | Тема светлая/тёмная | Комфорт вечером | «день/каюта»; с e или отдельно |
@@ -70,7 +69,7 @@
 
 | ID | Идея | Заметки |
 | --- | --- | --- |
-| — | — | пусто |
+| N17 | Firebase Auth + облачный сейв | Код в репо; нужен проект Firebase + env |
 
 ---
 
@@ -211,11 +210,14 @@ Discovery **N13** (visual coherence) — см. секцию ниже в Inbox / 
 
 **Won't в v1:** конфетти, лут, cutscene на авто-settle, анимация каждую минуту таймера, zoom/дрейф кадра капсулы.
 
-### N17 — Firebase: регистрация + облачный сейв (Next)
+### N17 — Firebase: регистрация + облачный сейв (In progress)
 
 **Зачем:** один сейв на телефоне и компе без ручного JSON.
 
-**План:** Spark (бесплатно) → Email/Google Auth → один документ Firestore на uid (тот же JSON, что бэкап) → localStorage как кэш/офлайн → кнопка «выйти». Конфликты v1: last-write-wins + время сохранения.
+**Сделано в коде:** Google + Email Auth; документ `users/{uid}`; localStorage кэш; LWW по `savedAt`; UI на «Данные»; debounce push; без env — офлайн как раньше.  
+**Док:** [firebase-setup.md](./firebase-setup.md), ADR [0003](./decisions/0003-firebase-cloud-save.md).
+
+**Осталось с твоей стороны:** создать Firebase project → вписать env локально и на Vercel → Redeploy.
 
 **Не в v1:** шифрование E2E, мультиаккаунт семьи, realtime collaboration.
 
@@ -224,4 +226,4 @@ Discovery **N13** (visual coherence) — см. секцию ниже в Inbox / 
 **Сделано:** Vercel Hobby, проект `singularity`, GitHub `snakeage/Singularity` → auto-deploy с `main`.  
 **URL:** https://singularity-eight-dusky.vercel.app  
 
-Пока без облачного сейва — на каждом устройстве свой `localStorage`; перенос через экспорт/импорт на «Данные». Далее — **N17** Firebase.
+localStorage на устройстве; облако — **N17**.

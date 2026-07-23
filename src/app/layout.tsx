@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Manrope } from "next/font/google";
 import { AppShell } from "@/components/AppShell";
+import { CloudSyncProvider } from "@/lib/CloudSyncProvider";
 import { AppProvider } from "@/store/AppProvider";
 import "./globals.css";
 
@@ -32,7 +33,9 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AppProvider>
-          <AppShell>{children}</AppShell>
+          <CloudSyncProvider>
+            <AppShell>{children}</AppShell>
+          </CloudSyncProvider>
         </AppProvider>
       </body>
     </html>

@@ -23,7 +23,7 @@ npm run dev
 **Live:** [https://singularity-eight-dusky.vercel.app](https://singularity-eight-dusky.vercel.app)  
 (Vercel Hobby · push в `main` → автодеплой)
 
-Пока данные в `localStorage` **этого** браузера. Синхронизация телефон↔комп — следующий шаг (**N17** Firebase). До него: экран **Данные** → экспорт / импорт JSON.
+Облачный сейв (**N17**): см. [docs/firebase-setup.md](docs/firebase-setup.md). Пока env не заданы — только `localStorage` + экспорт/импорт JSON.
 
 Локальная production-проверка:
 
@@ -56,6 +56,7 @@ npm run build && npm start
 | [docs/data-model.md](docs/data-model.md) | Сущности и связи |
 | [docs/backlog.md](docs/backlog.md) | Next / Later / Done |
 | [docs/art-direction.md](docs/art-direction.md) | Moments + drill-капсулы (ready/session) |
+| [docs/firebase-setup.md](docs/firebase-setup.md) | N17: Auth + облачный сейв |
 | [docs/decisions/](docs/decisions/) | ADR |
 
 ## Хранение данных

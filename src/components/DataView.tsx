@@ -19,6 +19,7 @@ import {
   requestNotificationPermission,
 } from "@/lib/reminders";
 import { useApp } from "@/store/AppProvider";
+import { CloudSavePanel } from "./CloudSavePanel";
 import { PortraitAvatar } from "./PortraitAvatar";
 import { SkinPicker } from "./SkinPicker";
 import { Badge, Button, Field, FieldHint, Input, Section } from "./ui";
@@ -268,12 +269,14 @@ export function DataView() {
         </form>
       </Section>
 
+      <CloudSavePanel />
+
       <Section title="Где сейчас лежат данные">
         <div className="rounded-md border border-[var(--line)] bg-[var(--panel)] p-4 text-sm text-[var(--muted)]">
           <p>
-            Браузерное хранилище{" "}
+            Локально:{" "}
             <code className="text-[var(--ink)]">localStorage</code> на этом
-            компьютере и в этом браузере.
+            устройстве. Если вошёл в облако — копия ещё в Firebase (см. выше).
           </p>
           <p className="mt-2">
             Мечт: {data.dreams.length}, этапов: {data.stages.length}, отметок:{" "}

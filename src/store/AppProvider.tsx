@@ -33,6 +33,7 @@ import {
   getPractices,
   getStagesForDream,
 } from "@/lib/selectors";
+import { writeCloudMeta } from "@/lib/cloudSave";
 import { loadData, saveData } from "@/lib/storage";
 import { canActivateStage } from "@/lib/stages";
 import { parseTags } from "@/lib/tags";
@@ -61,6 +62,8 @@ type AppContextValue = {
   focusDreamId: string | undefined;
   exportBackup: () => void;
   importBackupFile: (file: File) => Promise<void>;
+  /** Replace entire save (cloud sync / import). */
+  replaceAllData: (next: AppData) => void;
   createDream: (input: {
     title: string;
     why: string;
@@ -275,6 +278,7 @@ function persist(updater: (prev: AppData) => AppData) {
   return (prev: AppData) => {
     const next = updater(prev);
     saveData(next);
+    writeCloudMeta({ localSavedAt: new Date().toISOString() });
     return next;
   };
 }
@@ -303,7 +307,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const text = await file.text();
     const imported = parseBackup(text);
     saveData(imported);
+    writeCloudMeta({ localSavedAt: new Date().toISOString() });
     setData(imported);
+  }, []);
+
+  const replaceAllData = useCallback((next: AppData) => {
+    setData(next);
   }, []);
 
   const createDream: AppContextValue["createDream"] = useCallback((input) => {
@@ -1614,6 +1623,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       focusDreamId: focusDream?.id,
       exportBackup,
       importBackupFile,
+      replaceAllData,
       createDream,
       setFocusDream,
       updateDream,
@@ -1666,6 +1676,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       focusDream?.id,
       exportBackup,
       importBackupFile,
+      replaceAllData,
       createDream,
       setFocusDream,
       updateDream,
