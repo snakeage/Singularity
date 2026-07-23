@@ -18,6 +18,21 @@ npm run dev
 Открой [http://localhost:3000](http://localhost:3000) или [http://127.0.0.1:3000](http://127.0.0.1:3000)  
 (оба origin разрешены в `next.config` — иначе в Next 16 dev гидрация может зависнуть на «Загрузка…»).
 
+## Деплой (для себя / телефон)
+
+1. Репо на GitHub: `snakeage/Singularity`.
+2. [Vercel](https://vercel.com) → Add New Project → Import этот репозиторий → Deploy.
+3. Framework: Next.js (определится сам). Env пока не нужны.
+4. После деплоя открой выданный URL с телефона.
+
+Пока данные живут в `localStorage` **этого** браузера. Синхронизация телефон↔комп — следующий шаг (**N17** Firebase). До него: экран **Данные** → экспорт / импорт JSON.
+
+Production-проверка локально:
+
+```bash
+npm run build && npm start
+```
+
 ## Экраны
 
 | Путь | Назначение |
